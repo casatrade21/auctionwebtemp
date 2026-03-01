@@ -246,9 +246,7 @@ async function loadInstantPurchases() {
     if (fromDate) params.set("fromDate", fromDate);
     if (toDate) params.set("toDate", toDate + " 23:59:59");
 
-    const response = await window.AdminAPI.fetchAdminAPI(
-      `/instant-purchases?${params.toString()}`,
-    );
+    const response = await fetchAPI(`/instant-purchases?${params.toString()}`);
 
     currentPurchasesData = response.data || [];
     totalPages = response.totalPages || 1;
@@ -458,18 +456,15 @@ async function bulkChangeStatus() {
   for (const id of ids) {
     try {
       if (target === "cancelled") {
-        await window.AdminAPI.fetchAdminAPI(`/instant-purchases/cancel`, {
+        await fetchAPI(`/instant-purchases/cancel`, {
           method: "PUT",
           body: JSON.stringify({ ids: [id] }),
         });
       } else {
-        await window.AdminAPI.fetchAdminAPI(
-          `/instant-purchases/shipping-status`,
-          {
-            method: "PUT",
-            body: JSON.stringify({ ids: [id], shippingStatus: target }),
-          },
-        );
+        await fetchAPI(`/instant-purchases/shipping-status`, {
+          method: "PUT",
+          body: JSON.stringify({ ids: [id], shippingStatus: target }),
+        });
       }
       successCount++;
     } catch (e) {
@@ -489,7 +484,7 @@ function openCancelModal(id) {
 async function submitCancel() {
   const id = document.getElementById("cancelPurchaseId").value;
   try {
-    await window.AdminAPI.fetchAdminAPI(`/instant-purchases/cancel`, {
+    await fetchAPI(`/instant-purchases/cancel`, {
       method: "PUT",
       body: JSON.stringify({ ids: [parseInt(id)] }),
     });
@@ -511,7 +506,7 @@ async function submitShipping() {
   const id = document.getElementById("shippingPurchaseId").value;
   const status = document.getElementById("shippingStatus").value;
   try {
-    await window.AdminAPI.fetchAdminAPI(`/instant-purchases/shipping-status`, {
+    await fetchAPI(`/instant-purchases/shipping-status`, {
       method: "PUT",
       body: JSON.stringify({ ids: [parseInt(id)], shippingStatus: status }),
     });
@@ -558,16 +553,13 @@ async function submitRepair() {
   const fee = document.getElementById("repairFee").value;
 
   try {
-    await window.AdminAPI.fetchAdminAPI(
-      `/bid-results/instant/${id}/request-repair`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          repairDetails: details,
-          repairFee: Number(fee) || 0,
-        }),
-      },
-    );
+    await fetchAPI(`/bid-results/instant/${id}/request-repair`, {
+      method: "POST",
+      body: JSON.stringify({
+        repairDetails: details,
+        repairFee: Number(fee) || 0,
+      }),
+    });
     alert("수선이 접수되었습니다.");
     document.getElementById("repairModal").classList.remove("active");
     await loadInstantPurchases();
@@ -580,7 +572,7 @@ async function cancelRepair() {
   const id = document.getElementById("repairPurchaseId").value;
   if (!confirm("수선 접수를 취소하시겠습니까?")) return;
   try {
-    await window.AdminAPI.fetchAdminAPI(`/bid-results/instant/${id}/repair`, {
+    await fetchAPI(`/bid-results/instant/${id}/repair`, {
       method: "DELETE",
     });
     alert("수선이 취소되었습니다.");
@@ -625,8 +617,8 @@ async function openDetailModal(id) {
 
   // Fetch full details
   try {
-    const details = await window.AdminAPI.fetchAdminAPI(
-      `/data/item-details/${itemId}`,
+    const details = await window.API.fetchAPI(
+      `/detail/item-details/${itemId}`,
       { method: "POST", body: JSON.stringify({ aucNum: item.auc_num }) },
     );
     document.getElementById("instantDetailDescription").textContent =
