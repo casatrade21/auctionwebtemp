@@ -132,6 +132,18 @@ window.BidProductsCore = (function () {
         default:
           return true;
       }
+    } else if (product.type === "instant") {
+      // instant (바로 구매)
+      switch (statusFilter) {
+        case "completed":
+          return product.status === "completed";
+
+        case "all":
+          return true;
+
+        default:
+          return product.status === "completed";
+      }
     } else {
       // direct
       switch (statusFilter) {
@@ -326,9 +338,17 @@ window.BidProductsCore = (function () {
     const bidTypeEl = element.querySelector('[data-field="bid_type_display"]');
     if (bidTypeEl) {
       bidTypeEl.textContent =
-        product.type === "live" ? "현장 경매" : "직접 경매";
+        product.type === "live"
+          ? "현장 경매"
+          : product.type === "instant"
+            ? "바로 구매"
+            : "직접 경매";
       bidTypeEl.className = `bid-type ${
-        product.type === "live" ? "live-type" : "direct-type"
+        product.type === "live"
+          ? "live-type"
+          : product.type === "instant"
+            ? "instant-type"
+            : "direct-type"
       }`;
     }
 
@@ -400,7 +420,10 @@ window.BidProductsCore = (function () {
         bidActionEl.className = "bid-action expanded";
 
         let bidHtml = "";
-        if (product.type === "direct") {
+        if (product.type === "instant") {
+          // 바로 구매는 입찰 UI 없음 — 항상 완료 상태
+          bidHtml = "";
+        } else if (product.type === "direct") {
           const directBidInfo = _pageState.directBids.find(
             (b) => b.id === product.id,
           );
@@ -478,7 +501,24 @@ window.BidProductsCore = (function () {
         let japanesePrice = 0;
         let bidInfoHTML = "";
 
-        if (product.type === "direct") {
+        if (product.type === "instant") {
+          japanesePrice = product.purchase_price || product.winning_price || 0;
+          const instantKoreanPrice = calculateTotalPrice(
+            japanesePrice,
+            auctionId,
+            category,
+          );
+          bidInfoHTML += `
+            <div class="price-row winning-price">
+              <span class="price-label">구매 금액:</span>
+              <span class="price-value">${formatNumber(japanesePrice)} ¥</span>
+            </div>
+            <div class="price-row price-korean winning-price">
+              <span class="price-label">관부가세 포함:</span>
+              <span class="price-value">${formatNumber(instantKoreanPrice)} ₩</span>
+            </div>
+          `;
+        } else if (product.type === "direct") {
           japanesePrice = product.current_price || 0;
           bidInfoHTML += `
             <div class="price-row">
@@ -877,7 +917,11 @@ window.BidProductsCore = (function () {
     }
 
     // 입찰 가능 상태인 경우 BidManager를 사용하여 입찰 폼 생성
-    if (product.type === "direct") {
+    if (product.type === "instant") {
+      // 바로 구매는 입찰 폼 없음 — 읽기 전용으로 표시
+      displayReadOnlyBidInfo(product, item, bidSection);
+      return;
+    } else if (product.type === "direct") {
       const directBidInfo = _pageState.directBids.find(
         (b) => b.id === product.id,
       );
@@ -921,7 +965,9 @@ window.BidProductsCore = (function () {
     const category = item.category || "기타";
     let japanesePrice = 0;
 
-    if (product.type === "direct") {
+    if (product.type === "instant") {
+      japanesePrice = product.purchase_price || product.winning_price || 0;
+    } else if (product.type === "direct") {
       japanesePrice = product.current_price || 0;
     } else {
       japanesePrice =
@@ -944,7 +990,19 @@ window.BidProductsCore = (function () {
     `;
 
     // 경매 타입에 따른 추가 정보
-    if (product.type === "direct") {
+    if (product.type === "instant") {
+      priceInfoHTML += `
+        <div class="price-type">
+          <strong>경매 유형:</strong> 바로 구매
+        </div>
+        <div class="price-winning">
+          <strong>구매 금액:</strong> ￥${formatNumber(japanesePrice)}
+        </div>
+        <div class="price-winning-korean">
+          <strong>관부가세 포함:</strong> ₩${formatNumber(koreanPrice)}
+        </div>
+      `;
+    } else if (product.type === "direct") {
       priceInfoHTML += `
         <div class="price-type">
           <strong>경매 유형:</strong> 직접 경매

@@ -205,6 +205,16 @@ router.get("/", requireAdminUser, async (req, res) => {
                FROM direct_bids
                WHERE user_id IS NOT NULL
                  AND status = 'completed'
+               UNION ALL
+               SELECT
+                 user_id,
+                 COALESCE(
+                   CAST(REPLACE(purchase_price, ',', '') AS DECIMAL(18,2)),
+                   0
+                 ) AS amount_jpy
+               FROM instant_purchases
+               WHERE user_id IS NOT NULL
+                 AND status = 'completed'
              ) t
              GROUP BY user_id
            ) bt ON bt.user_id = u.id
@@ -235,8 +245,12 @@ router.get("/", requireAdminUser, async (req, res) => {
                SELECT user_id, 'direct' AS bid_type, id AS bid_id, item_id, created_at AS bid_at
                FROM direct_bids
                WHERE user_id IS NOT NULL
+               UNION ALL
+               SELECT user_id, 'instant' AS bid_type, id AS bid_id, item_id, created_at AS bid_at
+               FROM instant_purchases
+               WHERE user_id IS NOT NULL
              ) t
-             GROUP BY t.user_id
+             Group BY t.user_id
            ) lb ON lb.user_id = u.id
            WHERE u.role = 'normal' 
            ORDER BY u.created_at DESC`,
@@ -362,9 +376,19 @@ router.get("/:id/bid-history", requireAdminUser, async (req, res) => {
         FROM direct_bids d
         WHERE d.user_id = ?
           AND d.status = 'completed'
+        UNION ALL
+        SELECT
+          ip.status,
+          COALESCE(
+            CAST(REPLACE(ip.purchase_price, ',', '') AS DECIMAL(18,2)),
+            0
+          ) AS bid_price_jpy
+        FROM instant_purchases ip
+        WHERE ip.user_id = ?
+          AND ip.status = 'completed'
       ) t
       `,
-      [userId, userId],
+      [userId, userId, userId],
     );
 
     const [historyRows] = await conn.query(
@@ -406,11 +430,29 @@ router.get("/:id/bid-history", requireAdminUser, async (req, res) => {
           ON CONVERT(ci.item_id USING utf8mb4) = CONVERT(d.item_id USING utf8mb4)
         WHERE d.user_id = ?
           AND d.status = 'completed'
+        UNION ALL
+        SELECT
+          'instant' AS bid_type,
+          ip.id AS bid_id,
+          ip.item_id,
+          COALESCE(ci.original_title, ci.title) AS item_title,
+          ci.auc_num,
+          ip.status,
+          COALESCE(
+            CAST(REPLACE(ip.purchase_price, ',', '') AS DECIMAL(18,2)),
+            0
+          ) AS bid_price_jpy,
+          COALESCE(ip.completed_at, ip.updated_at, ip.created_at) AS bid_at
+        FROM instant_purchases ip
+        LEFT JOIN crawled_items ci
+          ON CONVERT(ci.item_id USING utf8mb4) = CONVERT(ip.item_id USING utf8mb4)
+        WHERE ip.user_id = ?
+          AND ip.status = 'completed'
       ) h
       ORDER BY h.bid_at DESC, h.bid_id DESC
       LIMIT 200
       `,
-      [userId, userId],
+      [userId, userId, userId],
     );
 
     const summary = summaryRows[0] || {

@@ -269,6 +269,47 @@ async function updateDirectBid(bidId, updateData) {
   });
 }
 
+// ---- 바로 구매 API ----
+
+// 바로 구매 목록 조회
+async function fetchInstantPurchases(
+  status = "",
+  page = 1,
+  limit = 10,
+  sortBy = "created_at",
+  sortOrder = "desc",
+  fromDate = "",
+  toDate = "",
+  search = "",
+) {
+  const params = new URLSearchParams({ page, limit });
+  if (status) params.append("status", status);
+  if (search) params.append("search", search);
+  if (sortBy) params.append("sortBy", sortBy);
+  if (sortOrder) params.append("sortOrder", sortOrder);
+  if (fromDate) params.append("fromDate", fromDate);
+  if (toDate) params.append("toDate", toDate);
+  return fetchAPI(`/instant-purchases?${params.toString()}`);
+}
+
+// 바로 구매 취소
+async function cancelInstantPurchase(idOrIds) {
+  const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+  return fetchAPI("/instant-purchases/cancel", {
+    method: "PUT",
+    body: JSON.stringify({ ids }),
+  });
+}
+
+// 바로 구매 배송 상태 변경
+async function updateInstantShippingStatus(idOrIds, shippingStatus) {
+  const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+  return fetchAPI("/instant-purchases/shipping-status", {
+    method: "PUT",
+    body: JSON.stringify({ ids, shipping_status: shippingStatus }),
+  });
+}
+
 // ---- 관리자 설정 API ----
 
 // 크롤링 상태 체크

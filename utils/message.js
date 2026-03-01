@@ -359,7 +359,18 @@ async function sendDailyWinningNotifications() {
         AND d.winning_price > 0
     `);
 
-    const completedBids = [...liveBids, ...directBids];
+    // 발송되지 않은 완료된 instant 구매들 조회
+    const [instantPurchases] = await connection.query(`
+      SELECT 'instant' as bid_type, p.id as bid_id, p.user_id,
+             i.title, i.scheduled_date
+      FROM instant_purchases p
+      JOIN crawled_items i ON p.item_id = i.item_id
+      WHERE p.status IN ('completed', 'shipped')
+        AND p.notification_sent_at IS NULL
+        AND p.purchase_price > 0
+    `);
+
+    const completedBids = [...liveBids, ...directBids, ...instantPurchases];
 
     if (completedBids.length === 0) {
       console.log("No completed bids to notify");
@@ -401,6 +412,16 @@ async function updateNotificationTimestamp(connection, bids) {
     await connection.query(
       `UPDATE direct_bids SET notification_sent_at = ? WHERE id IN (${placeholders})`,
       [now, ...directIds],
+    );
+  }
+
+  const instantBids = bids.filter((b) => b.bid_type === "instant");
+  if (instantBids.length > 0) {
+    const instantIds = instantBids.map((b) => b.bid_id);
+    const placeholders = instantIds.map(() => "?").join(",");
+    await connection.query(
+      `UPDATE instant_purchases SET notification_sent_at = ? WHERE id IN (${placeholders})`,
+      [now, ...instantIds],
     );
   }
 

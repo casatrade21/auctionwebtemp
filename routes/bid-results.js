@@ -105,12 +105,14 @@ router.get("/", async (req, res) => {
           SELECT item_id FROM live_bids WHERE user_id = ?
           UNION
           SELECT item_id FROM direct_bids WHERE user_id = ?
+          UNION
+          SELECT item_id FROM instant_purchases WHERE user_id = ?
         ) as bids
-        JOIN crawled_items i ON bids.item_id = i.item_id
+        Join crawled_items i ON bids.item_id = i.item_id
         WHERE DATE(i.scheduled_date) >= ? ${searchCondition}
         ORDER BY bid_date ${sortOrder.toUpperCase()}
       `;
-      dateParams = [userId, userId, fromDate, ...searchParams];
+      dateParams = [userId, userId, userId, fromDate, ...searchParams];
     }
 
     const [allDates] = await connection.query(dateQuery, dateParams);
@@ -230,7 +232,44 @@ router.get("/", async (req, res) => {
         directBidsParams,
       );
 
-      const allItems = [...liveBids, ...directBids];
+      // ✅ 해당 날짜의 모든 입찰 조회 - instant_purchases
+      let instantQuery;
+      let instantParams;
+
+      if (isAdminUserRole) {
+        instantQuery = `
+          SELECT 
+            ip.id, 'instant' as type, ip.status, ip.user_id,
+            ip.purchase_price as final_price, ip.purchase_price as winning_price,
+            ip.appr_id, ip.repair_requested_at, ip.created_at, ip.updated_at, ip.completed_at,
+            i.item_id, i.original_title, i.title, i.brand, i.category, i.image,
+            i.scheduled_date, i.auc_num, i.rank, i.starting_price
+          FROM instant_purchases ip
+          JOIN crawled_items i ON ip.item_id = i.item_id
+          WHERE DATE(i.scheduled_date) = ? ${searchCondition}
+        `;
+        instantParams = [targetDate, ...searchParams];
+      } else {
+        instantQuery = `
+          SELECT 
+            ip.id, 'instant' as type, ip.status, ip.user_id,
+            ip.purchase_price as final_price, ip.purchase_price as winning_price,
+            ip.appr_id, ip.repair_requested_at, ip.created_at, ip.updated_at, ip.completed_at,
+            i.item_id, i.original_title, i.title, i.brand, i.category, i.image,
+            i.scheduled_date, i.auc_num, i.rank, i.starting_price
+          FROM instant_purchases ip
+          JOIN crawled_items i ON ip.item_id = i.item_id
+          WHERE ip.user_id = ? AND DATE(i.scheduled_date) = ? ${searchCondition}
+        `;
+        instantParams = [userId, targetDate, ...searchParams];
+      }
+
+      const [instantPurchases] = await connection.query(
+        instantQuery,
+        instantParams,
+      );
+
+      const allItems = [...liveBids, ...directBids, ...instantPurchases];
 
       if (allItems.length === 0) {
         continue; // 이 날짜는 건너뜀
@@ -762,6 +801,186 @@ router.post("/direct/:id/request-appraisal", async (req, res) => {
 });
 
 /**
+ * POST /api/bid-results/instant/:id/request-appraisal
+ * 바로 구매 감정서 신청
+ */
+router.post("/instant/:id/request-appraisal", async (req, res) => {
+  const bidId = req.params.id;
+
+  if (!req.session.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const userId = req.session.user.id;
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [bids] = await connection.query(
+      `SELECT ip.*, i.brand, i.title, i.category, i.image, i.additional_images, i.scheduled_date
+       FROM instant_purchases ip 
+       JOIN crawled_items i ON ip.item_id = i.item_id 
+       WHERE ip.id = ? AND ip.status = 'completed' AND ip.purchase_price > 0`,
+      [bidId],
+    );
+
+    if (
+      bids.length === 0 ||
+      !(bids[0].user_id == userId || userId == "admin")
+    ) {
+      await connection.rollback();
+      return res.status(404).json({
+        message: "낙찰된 상품을 찾을 수 없거나 접근 권한이 없습니다.",
+      });
+    }
+
+    const bid = bids[0];
+    // instant_purchases uses purchase_price → alias as winning_price for downstream
+    bid.winning_price = bid.purchase_price;
+
+    if (bid.appr_id) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "이미 감정서를 신청했습니다.",
+        appraisal_id: bid.appr_id,
+      });
+    }
+
+    // 계정 정보 조회
+    const [accounts] = await connection.query(
+      `SELECT account_type, deposit_balance, daily_limit, daily_used 
+      FROM user_accounts 
+      WHERE user_id = ?`,
+      [bid.user_id],
+    );
+
+    const account = accounts[0];
+    const isIndividual = account?.account_type === "individual";
+
+    // 환율 조회 및 원화 환산
+    const settlementDate = new Date(bid.scheduled_date)
+      .toISOString()
+      .split("T")[0];
+    const exchangeRate = await getExchangeRate(settlementDate);
+    const krwAmount = Math.round(bid.winning_price * exchangeRate);
+    const appraisalFee = 16500;
+
+    // 예치금/한도 차감 (별도 트랜잭션)
+    const deductConnection = await pool.getConnection();
+    try {
+      await deductConnection.beginTransaction();
+
+      if (isIndividual) {
+        await deductDeposit(
+          deductConnection,
+          bid.user_id,
+          appraisalFee,
+          "appraisal",
+          bidId,
+          `Instant purchase appraisal fee for ${bid.title}`,
+        );
+      } else {
+        await deductLimit(
+          deductConnection,
+          bid.user_id,
+          appraisalFee,
+          "appraisal",
+          bidId,
+          `Instant purchase appraisal fee for ${bid.title}`,
+        );
+      }
+
+      await deductConnection.commit();
+      console.log(
+        `[Instant Appraisal] ${isIndividual ? "Deposit" : "Limit"} deducted: ₩${appraisalFee.toLocaleString()} for bid ${bidId}`,
+      );
+    } catch (err) {
+      await deductConnection.rollback();
+      console.error(
+        `[Instant Appraisal] Failed to deduct ${isIndividual ? "deposit" : "limit"}:`,
+        err,
+      );
+      throw err;
+    } finally {
+      deductConnection.release();
+    }
+
+    const { appraisal_id, certificate_number } =
+      await createAppraisalFromAuction(
+        connection,
+        bid,
+        {
+          brand: bid.brand,
+          title: bid.title,
+          category: bid.category,
+          image: bid.image,
+          additional_images: bid.additional_images,
+        },
+        userId,
+      );
+
+    await connection.query(
+      "UPDATE instant_purchases SET appr_id = ? WHERE id = ?",
+      [appraisal_id, bidId],
+    );
+
+    await connection.commit();
+
+    // 정산 업데이트 및 조정
+    try {
+      await createOrUpdateSettlement(bid.user_id, settlementDate);
+      await adjustDepositBalance(
+        bid.user_id,
+        bid.winning_price,
+        settlementDate,
+        bid.title,
+      );
+    } catch (err) {
+      console.error(`Error updating settlement for instant appraisal:`, err);
+    }
+
+    // 잔액 확인 및 경고
+    const [updatedAccounts] = await pool.query(
+      `SELECT account_type, deposit_balance, daily_limit, daily_used 
+      FROM user_accounts 
+      WHERE user_id = ?`,
+      [bid.user_id],
+    );
+
+    let balanceWarning = null;
+    if (updatedAccounts[0]) {
+      const acc = updatedAccounts[0];
+      if (acc.account_type === "individual" && acc.deposit_balance < 0) {
+        balanceWarning = `예치금 잔액이 부족합니다. 현재 잔액: ¥${acc.deposit_balance.toLocaleString()}`;
+      } else if (
+        acc.account_type === "corporate" &&
+        acc.daily_used >= acc.daily_limit
+      ) {
+        balanceWarning = `일일 한도가 초과되었습니다. 사용액: ¥${acc.daily_used.toLocaleString()} / 한도: ¥${acc.daily_limit.toLocaleString()}`;
+      }
+    }
+
+    res.status(201).json({
+      message: "감정서 신청이 완료되었습니다.",
+      appraisal_id,
+      certificate_number,
+      status: "pending",
+      appraisal_fee: appraisalFee,
+      balanceWarning,
+    });
+  } catch (err) {
+    await connection.rollback();
+    console.error("감정서 신청 중 오류 발생:", err);
+    res.status(500).json({
+      message: err.message || "감정서 신청 중 오류가 발생했습니다.",
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+/**
  * POST /api/bid-results/live/:id/request-repair
  * 현장 경매 수선 접수/수정 (어드민 전용)
  */
@@ -1132,6 +1351,190 @@ router.post("/direct/:id/request-repair", async (req, res) => {
 });
 
 /**
+ * POST /api/bid-results/instant/:id/request-repair
+ * 바로 구매 수선 접수/수정 (어드민 전용)
+ */
+router.post("/instant/:id/request-repair", async (req, res) => {
+  const bidId = req.params.id;
+  const { repair_details, repair_fee } = req.body;
+
+  if (!req.session.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const userId = req.session.user.id;
+
+  // 어드민만 수선 접수 가능
+  if (req.session.user.login_id !== "admin") {
+    return res
+      .status(403)
+      .json({ message: "관리자만 수선 접수가 가능합니다." });
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [bids] = await connection.query(
+      `SELECT ip.*, i.brand, i.title, i.scheduled_date
+       FROM instant_purchases ip 
+       JOIN crawled_items i ON ip.item_id = i.item_id 
+       WHERE ip.id = ? AND ip.status = 'completed' AND ip.purchase_price > 0`,
+      [bidId],
+    );
+
+    if (bids.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        message: "낙찰된 상품을 찾을 수 없습니다.",
+      });
+    }
+
+    const bid = bids[0];
+    bid.winning_price = bid.purchase_price;
+    const isUpdate = !!bid.repair_requested_at;
+
+    // 계정 정보 조회
+    const [accounts] = await connection.query(
+      `SELECT account_type, deposit_balance, daily_limit, daily_used 
+      FROM user_accounts 
+      WHERE user_id = ?`,
+      [bid.user_id],
+    );
+
+    const account = accounts[0];
+    const isIndividual = account?.account_type === "individual";
+
+    // 환율 조회 및 원화 환산
+    const settlementDate = new Date(bid.scheduled_date)
+      .toISOString()
+      .split("T")[0];
+    const exchangeRate = await getExchangeRate(settlementDate);
+    const repairFee = repair_fee || 0;
+
+    // 신규 접수이고 수선비가 있는 경우 예치금/한도 차감
+    if (!isUpdate && repairFee > 0) {
+      const deductConnection = await pool.getConnection();
+      try {
+        await deductConnection.beginTransaction();
+
+        if (isIndividual) {
+          await deductDeposit(
+            deductConnection,
+            bid.user_id,
+            repairFee,
+            "repair",
+            bidId,
+            `Instant purchase repair fee for ${bid.title}`,
+          );
+        } else {
+          await deductLimit(
+            deductConnection,
+            bid.user_id,
+            repairFee,
+            "repair",
+            bidId,
+            `Instant purchase repair fee for ${bid.title}`,
+          );
+        }
+
+        await deductConnection.commit();
+        console.log(
+          `[Instant Repair] ${isIndividual ? "Deposit" : "Limit"} deducted: ₩${repairFee.toLocaleString()} for bid ${bidId}`,
+        );
+      } catch (err) {
+        await deductConnection.rollback();
+        console.error(
+          `[Instant Repair] Failed to deduct ${isIndividual ? "deposit" : "limit"}:`,
+          err,
+        );
+        throw err;
+      } finally {
+        deductConnection.release();
+      }
+    }
+
+    // 수선 내용과 금액 업데이트 (신규 또는 수정)
+    if (isUpdate) {
+      await connection.query(
+        `UPDATE instant_purchases 
+         SET repair_details = ?, 
+             repair_fee = ? 
+         WHERE id = ?`,
+        [repair_details || null, repair_fee || null, bidId],
+      );
+    } else {
+      await connection.query(
+        `UPDATE instant_purchases 
+         SET repair_requested_at = NOW(), 
+             repair_details = ?, 
+             repair_fee = ? 
+         WHERE id = ?`,
+        [repair_details || null, repair_fee || null, bidId],
+      );
+    }
+
+    await connection.commit();
+
+    // 정산 업데이트 및 조정
+    if (bid.scheduled_date) {
+      try {
+        await createOrUpdateSettlement(bid.user_id, settlementDate);
+        await adjustDepositBalance(
+          bid.user_id,
+          bid.winning_price,
+          settlementDate,
+          bid.title,
+        );
+      } catch (err) {
+        console.error(`Error updating settlement for instant repair:`, err);
+      }
+    }
+
+    // 잔액 확인 및 경고
+    const [updatedAccounts] = await pool.query(
+      `SELECT account_type, deposit_balance, daily_limit, daily_used 
+      FROM user_accounts 
+      WHERE user_id = ?`,
+      [bid.user_id],
+    );
+
+    let balanceWarning = null;
+    if (updatedAccounts[0]) {
+      const acc = updatedAccounts[0];
+      if (acc.account_type === "individual" && acc.deposit_balance < 0) {
+        balanceWarning = `예치금 잔액이 부족합니다. 현재 잔액: ¥${acc.deposit_balance.toLocaleString()}`;
+      } else if (
+        acc.account_type === "corporate" &&
+        acc.daily_used >= acc.daily_limit
+      ) {
+        balanceWarning = `일일 한도가 초과되었습니다. 사용액: ¥${acc.daily_used.toLocaleString()} / 한도: ¥${acc.daily_limit.toLocaleString()}`;
+      }
+    }
+
+    res.status(isUpdate ? 200 : 201).json({
+      message: isUpdate
+        ? "수선 정보가 수정되었습니다."
+        : "수선 접수가 완료되었습니다.",
+      requested_at: bid.repair_requested_at || new Date(),
+      repair_details,
+      repair_fee,
+      repair_fee_krw: repairFee,
+      balanceWarning,
+    });
+  } catch (err) {
+    await connection.rollback();
+    console.error("수선 처리 중 오류 발생:", err);
+    res.status(500).json({
+      message: err.message || "수선 처리 중 오류가 발생했습니다.",
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+/**
  * DELETE /api/bid-results/live/:id/repair
  * 현장 경매 수선 접수 취소 (어드민 전용)
  */
@@ -1268,6 +1671,91 @@ router.delete("/direct/:id/repair", async (req, res) => {
     // 수선 정보 삭제
     await connection.query(
       `UPDATE direct_bids 
+       SET repair_requested_at = NULL, 
+           repair_details = NULL, 
+           repair_fee = NULL 
+       WHERE id = ?`,
+      [bidId],
+    );
+
+    await connection.commit();
+
+    // 정산 업데이트
+    if (bid.scheduled_date) {
+      const settlementDate = new Date(bid.scheduled_date)
+        .toISOString()
+        .split("T")[0];
+      createOrUpdateSettlement(bid.user_id, settlementDate).catch(
+        console.error,
+      );
+    }
+
+    res.status(200).json({
+      message: "수선 접수가 취소되었습니다.",
+    });
+  } catch (err) {
+    await connection.rollback();
+    console.error("수선 취소 중 오류 발생:", err);
+    res.status(500).json({
+      message: err.message || "수선 취소 중 오류가 발생했습니다.",
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+/**
+ * DELETE /api/bid-results/instant/:id/repair
+ * 바로 구매 수선 접수 취소 (어드민 전용)
+ */
+router.delete("/instant/:id/repair", async (req, res) => {
+  const bidId = req.params.id;
+
+  if (!req.session.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const userId = req.session.user.id;
+
+  // 어드민만 취소 가능
+  if (req.session.user.login_id !== "admin") {
+    return res
+      .status(403)
+      .json({ message: "관리자만 수선 접수를 취소할 수 있습니다." });
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [bids] = await connection.query(
+      `SELECT ip.*, i.scheduled_date
+       FROM instant_purchases ip 
+       JOIN crawled_items i ON ip.item_id = i.item_id 
+       WHERE ip.id = ?`,
+      [bidId],
+    );
+
+    if (bids.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        message: "입찰을 찾을 수 없습니다.",
+      });
+    }
+
+    const bid = bids[0];
+
+    if (!bid.repair_requested_at) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "수선이 접수되지 않은 상품입니다.",
+      });
+    }
+
+    // 수선 정보 삭제
+    await connection.query(
+      `UPDATE instant_purchases 
        SET repair_requested_at = NULL, 
            repair_details = NULL, 
            repair_fee = NULL 
@@ -1856,7 +2344,18 @@ router.get("/debug/settlement-mismatch", isAdmin, async (req, res) => {
         [settlement.user_id, settlement.settlement_date],
       );
 
-      const actualItems = [...liveBids, ...directBids];
+      const [instantBids] = await connection.query(
+        `SELECT ip.*, ip.purchase_price as winning_price, i.auc_num, i.category
+         FROM instant_purchases ip
+         LEFT JOIN crawled_items i ON ip.item_id = i.item_id
+         WHERE ip.user_id = ? 
+           AND DATE(i.scheduled_date) = ?
+           AND ip.status = 'completed'
+           AND ip.purchase_price > 0`,
+        [settlement.user_id, settlement.settlement_date],
+      );
+
+      const actualItems = [...liveBids, ...directBids, ...instantBids];
 
       // 3. 실제 데이터와 정산 데이터 비교
       const actualItemCount = actualItems.length;
@@ -1949,6 +2448,14 @@ router.get("/debug/settlement-mismatch", isAdmin, async (req, res) => {
            AND DATE(i.scheduled_date) = s.settlement_date
            AND d.status = 'completed'
            AND d.winning_price > 0
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM instant_purchases ip
+         JOIN crawled_items i ON ip.item_id = i.item_id
+         WHERE ip.user_id = s.user_id 
+           AND DATE(i.scheduled_date) = s.settlement_date
+           AND ip.status = 'completed'
+           AND ip.purchase_price > 0
        )`,
     );
 
@@ -1980,7 +2487,21 @@ router.get("/debug/settlement-mismatch", isAdmin, async (req, res) => {
            WHERE s.user_id = d.user_id 
              AND s.settlement_date = DATE(i.scheduled_date)
          )
-       GROUP BY d.user_id, DATE(i.scheduled_date)`,
+       GROUP BY d.user_id, DATE(i.scheduled_date)
+       
+       UNION
+       
+       SELECT DISTINCT ip.user_id, DATE(i.scheduled_date) as settlement_date, COUNT(*) as item_count
+       FROM instant_purchases ip
+       JOIN crawled_items i ON ip.item_id = i.item_id
+       WHERE ip.status = 'completed'
+         AND ip.purchase_price > 0
+         AND NOT EXISTS (
+           SELECT 1 FROM daily_settlements s
+           WHERE s.user_id = ip.user_id 
+             AND s.settlement_date = DATE(i.scheduled_date)
+         )
+       GROUP BY ip.user_id, DATE(i.scheduled_date)`,
     );
 
     res.json({
@@ -2045,6 +2566,19 @@ router.post("/debug/fix-settlement-mismatch", isAdmin, async (req, res) => {
            SELECT 1 FROM daily_settlements s
            WHERE s.user_id = d.user_id 
              AND s.settlement_date = DATE(i.scheduled_date)
+         )
+       
+       UNION
+       
+       SELECT DISTINCT ip.user_id, DATE(i.scheduled_date) as settlement_date
+       FROM instant_purchases ip
+       JOIN crawled_items i ON ip.item_id = i.item_id
+       WHERE ip.status = 'completed'
+         AND ip.purchase_price > 0
+         AND NOT EXISTS (
+           SELECT 1 FROM daily_settlements s
+           WHERE s.user_id = ip.user_id 
+             AND s.settlement_date = DATE(i.scheduled_date)
          )`,
     );
 
@@ -2086,6 +2620,14 @@ router.post("/debug/fix-settlement-mismatch", isAdmin, async (req, res) => {
            AND DATE(i.scheduled_date) = s.settlement_date
            AND d.status = 'completed'
            AND d.winning_price > 0
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM instant_purchases ip
+         JOIN crawled_items i ON ip.item_id = i.item_id
+         WHERE ip.user_id = s.user_id 
+           AND DATE(i.scheduled_date) = s.settlement_date
+           AND ip.status = 'completed'
+           AND ip.purchase_price > 0
        )`,
     );
 
@@ -2149,7 +2691,18 @@ router.post("/debug/fix-settlement-mismatch", isAdmin, async (req, res) => {
           [settlement.user_id, settlement.settlement_date],
         );
 
-        const actualItems = [...liveBids, ...directBids];
+        const [instantBids] = await connection.query(
+          `SELECT ip.purchase_price as winning_price, ip.appr_id, ip.repair_requested_at, ip.repair_fee
+           FROM instant_purchases ip
+           LEFT JOIN crawled_items i ON ip.item_id = i.item_id
+           WHERE ip.user_id = ? 
+             AND DATE(i.scheduled_date) = ?
+             AND ip.status = 'completed'
+             AND ip.purchase_price > 0`,
+          [settlement.user_id, settlement.settlement_date],
+        );
+
+        const actualItems = [...liveBids, ...directBids, ...instantBids];
 
         // 정산 데이터 조회
         const [settlementData] = await connection.query(
@@ -2537,7 +3090,29 @@ router.get("/admin/bid-results/detail", isAdmin, async (req, res) => {
       [userId, date],
     );
 
-    const allItems = [...liveBids, ...directBids];
+    // 낙찰 완료된 instant_purchases만 조회
+    const [instantBids] = await connection.query(
+      `SELECT 
+         ip.id,
+         'instant' as type,
+         ip.item_id as itemId,
+         ip.purchase_price as final_price,
+         ip.purchase_price as winning_price,
+         ip.status,
+         ip.appr_id,
+         i.title,
+         i.brand,
+         i.category,
+         i.auc_num,
+         i.starting_price as startPrice,
+         i.image
+       FROM instant_purchases ip
+       JOIN crawled_items i ON ip.item_id = i.item_id
+       WHERE ip.user_id = ? AND DATE(i.scheduled_date) = ? AND ip.status = 'completed'`,
+      [userId, date],
+    );
+
+    const allItems = [...liveBids, ...directBids, ...instantBids];
 
     // 각 아이템에 관부가세 포함 가격 계산 및 총액 집계
     let totalJapanesePrice = 0;

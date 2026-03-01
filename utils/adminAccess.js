@@ -2,6 +2,7 @@ const ADMIN_MENU_KEYS = [
   "dashboard",
   "live-bids",
   "direct-bids",
+  "instant-purchases",
   "all-bids",
   "bid-results",
   "transactions",
@@ -16,16 +17,21 @@ const ADMIN_MENU_KEYS = [
 
 function isSuperAdminUser(user) {
   if (!user) return false;
-  return String(user.login_id || "").toLowerCase() === "admin" || Number(user.is_superadmin || 0) === 1;
+  return (
+    String(user.login_id || "").toLowerCase() === "admin" ||
+    Number(user.is_superadmin || 0) === 1
+  );
 }
 
 function parseAllowedMenus(raw) {
   if (!raw) return [];
-  if (Array.isArray(raw)) return raw.filter((x) => ADMIN_MENU_KEYS.includes(String(x)));
+  if (Array.isArray(raw))
+    return raw.filter((x) => ADMIN_MENU_KEYS.includes(String(x)));
   if (typeof raw === "string") {
     try {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.filter((x) => ADMIN_MENU_KEYS.includes(String(x)));
+      if (Array.isArray(parsed))
+        return parsed.filter((x) => ADMIN_MENU_KEYS.includes(String(x)));
     } catch (_) {
       return [];
     }
@@ -35,7 +41,11 @@ function parseAllowedMenus(raw) {
 
 function sanitizeAllowedMenus(menus) {
   if (!Array.isArray(menus)) return [];
-  return [...new Set(menus.map((x) => String(x)).filter((x) => ADMIN_MENU_KEYS.includes(x)))];
+  return [
+    ...new Set(
+      menus.map((x) => String(x)).filter((x) => ADMIN_MENU_KEYS.includes(x)),
+    ),
+  ];
 }
 
 function isAdminUser(user) {

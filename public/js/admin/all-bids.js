@@ -11,6 +11,7 @@ class UnifiedAuctionManager {
   constructor() {
     this.liveData = [];
     this.directData = [];
+    this.instantData = [];
     this.currentFilter = "all";
     this.currentResultType = "all";
     this.searchTimeout = null;
@@ -89,12 +90,13 @@ class UnifiedAuctionManager {
   // 대시보드 데이터 로드
   async loadDashboardData() {
     try {
-      const [liveData, directData] = await Promise.all([
+      const [liveData, directData, instantData] = await Promise.all([
         fetchLiveBids("", 1, 0), // 전체 조회
         fetchDirectBids("", false, 1, 0), // 전체 조회
+        fetchInstantPurchases("", 1, 0), // 전체 조회
       ]);
 
-      this.updateStatusCards(liveData, directData);
+      this.updateStatusCards(liveData, directData, instantData);
       await this.updateUrgentItems();
       this.updateQuickActionCounts();
     } catch (error) {
@@ -103,7 +105,7 @@ class UnifiedAuctionManager {
   }
 
   // 상태 카드 업데이트
-  updateStatusCards(liveData, directData) {
+  updateStatusCards(liveData, directData, instantData) {
     if (!document.getElementById("liveActiveCount")) return;
 
     // 현장 경매 상태 집계
@@ -122,6 +124,16 @@ class UnifiedAuctionManager {
       directStats.completed;
     document.getElementById("directCancelledCount").textContent =
       directStats.cancelled;
+
+    // 바로 구매 상태 집계
+    if (instantData && instantData.purchases) {
+      const instantStats = this.calculateStats(
+        instantData.purchases,
+        "instant",
+      );
+      const el = document.getElementById("instantCompletedCount");
+      if (el) el.textContent = instantStats.completed;
+    }
   }
 
   // 상태 집계 계산
@@ -143,11 +155,10 @@ class UnifiedAuctionManager {
           stats.cancelled++;
         }
       } else {
-        // 직접 경매: active, completed, cancelled 그대로
-        if (bid.status === "active") {
-          stats.active++;
-        } else if (bid.status === "completed") {
-          stats.completed++;
+        // 직접 경매 / 바로 구매: active, completed, cancelled 그대로
+        if (bid.status === "active" || bid.status === "completed") {
+          if (bid.status === "active") stats.active++;
+          else stats.completed++;
         } else if (bid.status === "cancelled") {
           stats.cancelled++;
         }
@@ -168,7 +179,7 @@ class UnifiedAuctionManager {
     try {
       const today = new Date().toISOString().split("T")[0];
 
-      const [liveToday, directToday] = await Promise.all([
+      const [liveToday, directToday, instantToday] = await Promise.all([
         fetchLiveBids(
           "",
           1,
@@ -188,10 +199,13 @@ class UnifiedAuctionManager {
           today,
           today,
         ),
+        fetchInstantPurchases("", 1, 20, "created_at", "desc", today, today),
       ]);
 
       const totalCount =
-        (liveToday.bids?.length || 0) + (directToday.bids?.length || 0);
+        (liveToday.bids?.length || 0) +
+        (directToday.bids?.length || 0) +
+        (instantToday.purchases?.length || 0);
       const todayDeadlineCountEl =
         document.getElementById("todayDeadlineCount");
       if (todayDeadlineCountEl) todayDeadlineCountEl.textContent = totalCount;
@@ -200,7 +214,11 @@ class UnifiedAuctionManager {
 
       this.renderUrgentList(
         "todayDeadlineList",
-        [...(liveToday.bids || []), ...(directToday.bids || [])],
+        [
+          ...(liveToday.bids || []),
+          ...(directToday.bids || []),
+          ...(instantToday.purchases || []),
+        ],
         "deadline",
       );
     } catch (error) {
@@ -368,13 +386,15 @@ class UnifiedAuctionManager {
   async loadDefaultResults() {
     try {
       const limit = this.itemsPerPage;
-      const [liveRecent, directRecent] = await Promise.all([
+      const [liveRecent, directRecent, instantRecent] = await Promise.all([
         fetchLiveBids("", 1, limit, "updated_at", "desc"),
         fetchDirectBids("", false, 1, limit, "updated_at", "desc"),
+        fetchInstantPurchases("", 1, limit, "created_at", "desc"),
       ]);
 
       this.liveData = liveRecent.bids || [];
       this.directData = directRecent.bids || [];
+      this.instantData = instantRecent.purchases || [];
 
       this.renderUnifiedResults();
     } catch (error) {
@@ -406,7 +426,7 @@ class UnifiedAuctionManager {
       this.showLoading();
       const limit = this.itemsPerPage;
 
-      const [liveResults, directResults] = await Promise.all([
+      const [liveResults, directResults, instantResults] = await Promise.all([
         fetchLiveBids("", 1, limit, "updated_at", "desc", "", "", searchTerm),
         fetchDirectBids(
           "",
@@ -419,10 +439,21 @@ class UnifiedAuctionManager {
           "",
           searchTerm,
         ),
+        fetchInstantPurchases(
+          "",
+          1,
+          limit,
+          "created_at",
+          "desc",
+          "",
+          "",
+          searchTerm,
+        ),
       ]);
 
       this.liveData = liveResults.bids || [];
       this.directData = directResults.bids || [];
+      this.instantData = instantResults.purchases || [];
       this.currentFilter = "search";
 
       this.renderUnifiedResults();
@@ -469,6 +500,7 @@ class UnifiedAuctionManager {
 
       this.liveData = liveToday.bids || [];
       this.directData = directToday.bids || [];
+      this.instantData = [];
       this.currentFilter = "today-deadlines";
 
       this.renderUnifiedResults();
@@ -495,6 +527,7 @@ class UnifiedAuctionManager {
 
       this.liveData = [];
       this.directData = unsubmitted;
+      this.instantData = [];
       this.currentFilter = "unsubmitted";
 
       this.renderUnifiedResults();
@@ -518,6 +551,7 @@ class UnifiedAuctionManager {
 
       this.liveData = liveSecond.bids || [];
       this.directData = [];
+      this.instantData = [];
       this.currentFilter = "second-proposals";
 
       this.renderUnifiedResults();
@@ -532,9 +566,10 @@ class UnifiedAuctionManager {
       this.showLoading();
       const limit = this.itemsPerPage;
       // 모든 활성 입찰을 가져와서 프론트엔드에서 필터링
-      const [liveActive, directActive] = await Promise.all([
+      const [liveActive, directActive, instantAll] = await Promise.all([
         fetchLiveBids("first,second,final", 1, limit, "updated_at", "desc"),
         fetchDirectBids("active", false, 1, limit, "updated_at", "desc"),
+        fetchInstantPurchases("", 1, limit, "created_at", "desc"),
       ]);
 
       // 고액 입찰 필터링
@@ -546,6 +581,10 @@ class UnifiedAuctionManager {
 
       this.directData = (directActive.bids || []).filter((bid) => {
         return (bid.current_price || 0) >= this.highValueThreshold;
+      });
+
+      this.instantData = (instantAll.purchases || []).filter((p) => {
+        return (p.purchase_price || 0) >= this.highValueThreshold;
       });
 
       this.currentFilter = "high-value";
@@ -560,13 +599,16 @@ class UnifiedAuctionManager {
     try {
       this.showLoading();
       const limit = this.itemsPerPage;
-      const [liveCompleted, directCompleted] = await Promise.all([
-        fetchLiveBids("completed", 1, limit, "updated_at", "desc"),
-        fetchDirectBids("completed", false, 1, limit, "updated_at", "desc"),
-      ]);
+      const [liveCompleted, directCompleted, instantCompleted] =
+        await Promise.all([
+          fetchLiveBids("completed", 1, limit, "updated_at", "desc"),
+          fetchDirectBids("completed", false, 1, limit, "updated_at", "desc"),
+          fetchInstantPurchases("completed", 1, limit, "created_at", "desc"),
+        ]);
 
       this.liveData = liveCompleted.bids || [];
       this.directData = directCompleted.bids || [];
+      this.instantData = instantCompleted.purchases || [];
       this.currentFilter = "completed";
 
       this.renderUnifiedResults();
@@ -599,12 +641,18 @@ class UnifiedAuctionManager {
     const tbody = document.getElementById("unifiedResults");
     let liveToShow = this.liveData || [];
     let directToShow = this.directData || [];
+    let instantToShow = this.instantData || [];
 
     // 결과 탭에 따라 필터링
     if (this.currentResultType === "live") {
       directToShow = [];
+      instantToShow = [];
     } else if (this.currentResultType === "direct") {
       liveToShow = [];
+      instantToShow = [];
+    } else if (this.currentResultType === "instant") {
+      liveToShow = [];
+      directToShow = [];
     }
 
     let html = "";
@@ -619,13 +667,18 @@ class UnifiedAuctionManager {
       html += this.renderDirectBidRow(bid);
     });
 
+    // 바로 구매 렌더링
+    instantToShow.forEach((purchase) => {
+      html += this.renderInstantPurchaseRow(purchase);
+    });
+
     if (html === "") {
       html =
         '<tr><td colspan="8" class="text-center">결과가 없습니다.</td></tr>';
     }
 
     tbody.innerHTML = html;
-    this.updateResultCounts(liveToShow, directToShow);
+    this.updateResultCounts(liveToShow, directToShow, instantToShow);
   }
 
   // 현장 경매 행 렌더링
@@ -675,6 +728,119 @@ class UnifiedAuctionManager {
         <td>${this.renderDirectActions(bid)}</td>
       </tr>
     `;
+  }
+
+  // 바로 구매 행 렌더링
+  renderInstantPurchaseRow(purchase) {
+    // instant purchase API returns flat data (not nested item)
+    const imageUrl = purchase.image || "/images/no-image.png";
+    const itemId = purchase.item_id || "-";
+    const aucNum = purchase.auc_num || 2;
+    const itemUrl = this.getItemUrl({
+      item_id: itemId,
+      item: { auc_num: aucNum, additional_info: purchase.additional_info },
+    });
+    const scheduled = this.formatScheduledDate(
+      purchase.original_scheduled_date || purchase.scheduled_date,
+    );
+
+    const itemInfoHtml = `
+      <div class="item-info">
+        <img src="${imageUrl}" alt="${purchase.original_title || ""}" class="item-thumbnail" />
+        <div class="item-details">
+          <div class="item-id">
+            <a href="${escapeHtml(itemUrl)}" target="_blank" rel="noopener noreferrer" class="item-id-link"
+              onclick="return openAllProductDetail(event, this);"
+              data-item-id="${escapeHtml(itemId)}"
+              data-bid-type="instant"
+              data-bid-status="${escapeHtml(purchase.status || "")}"
+              data-auc-num="${escapeHtml(String(aucNum))}"
+              data-image="${escapeHtml(imageUrl)}"
+              data-title="${escapeHtml(purchase.original_title || "-")}"
+              data-brand="${escapeHtml(purchase.brand || "-")}"
+              data-category="${escapeHtml(purchase.category || "-")}"
+              data-rank="${escapeHtml(purchase.rank || "-")}"
+              data-accessory-code="-"
+              data-scheduled="${escapeHtml(scheduled || "-")}"
+              data-origin-url="${escapeHtml(itemUrl || "#")}"
+            >${escapeHtml(itemId)}</a>
+          </div>
+          <div class="item-title">${purchase.original_title || purchase.title || "-"}</div>
+          <div class="item-meta">
+            <span>브랜드: ${purchase.brand || "-"}</span>
+            <span>등급: ${purchase.rank || "-"}</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    return `
+      <tr class="instant-bid-row" data-bid-type="instant" data-bid-id="${purchase.id}">
+        <td><span class="badge badge-type-instant">바로구매</span></td>
+        <td>${itemInfoHtml}</td>
+        <td>${purchase.login_id || purchase.user_id}<br>(${purchase.company_name || "-"})</td>
+        <td>${this.renderInstantPrices(purchase)}</td>
+        <td>${this.renderInstantStatus(purchase)}</td>
+        <td>${this.renderAppraisalBadge(purchase)}</td>
+        <td>
+          <div class="date-info">
+            <div>${formatDate(purchase.created_at)}</div>
+          </div>
+        </td>
+        <td>${this.renderInstantActions(purchase)}</td>
+      </tr>
+    `;
+  }
+
+  // 바로 구매 가격 렌더링
+  renderInstantPrices(purchase) {
+    let html = '<div class="bid-prices">';
+    if (purchase.purchase_price) {
+      html += `<div class="price-item winning">구매가: ${formatCurrency(purchase.purchase_price, "JPY")}</div>`;
+      if (purchase.auc_num && purchase.category) {
+        const totalPrice = calculateTotalPrice(
+          purchase.purchase_price,
+          purchase.auc_num,
+          purchase.category,
+        );
+        html += `<div class="price-item total">총액: ${formatCurrency(totalPrice, "KRW")}</div>`;
+      }
+    }
+    html += "</div>";
+    return html;
+  }
+
+  // 바로 구매 상태 렌더링
+  renderInstantStatus(purchase) {
+    const statusMap = {
+      completed: { text: "완료", className: "badge-success" },
+      cancelled: { text: "취소", className: "badge-secondary" },
+    };
+    const status = statusMap[purchase.status] || {
+      text: purchase.status || "-",
+      className: "badge",
+    };
+    let badge = `<span class="badge ${status.className}">${status.text}</span>`;
+    if (purchase.shipping_status) {
+      const shippingMap = {
+        domestic_arrived: "국내도착",
+        in_progress: "작업중",
+        shipped: "출고됨",
+      };
+      badge += ` <span class="badge badge-info">${shippingMap[purchase.shipping_status] || purchase.shipping_status}</span>`;
+    }
+    return badge;
+  }
+
+  // 바로 구매 작업 버튼 렌더링
+  renderInstantActions(purchase) {
+    let html = '<div class="quick-actions-cell">';
+    if (purchase.status === "completed" && !purchase.shipping_status) {
+      html += `<button class="btn btn-sm btn-secondary" onclick="unifiedManager.quickAction('cancel-instant', ${purchase.id})">취소</button>`;
+    }
+    html += `<button class="btn btn-sm btn-outline" onclick="unifiedManager.goToDetailPage('instant', ${purchase.id})">상세 관리</button>`;
+    html += "</div>";
+    return html;
   }
 
   // 상품 정보 렌더링
@@ -914,6 +1080,7 @@ class UnifiedAuctionManager {
       "cancel-live": "현장 경매 낙찰 실패",
       "complete-direct": "직접 경매 낙찰 완료",
       "cancel-direct": "직접 경매 낙찰 실패",
+      "cancel-instant": "바로 구매 취소",
       "mark-submitted": "플랫폼 반영 표시",
     };
 
@@ -924,6 +1091,7 @@ class UnifiedAuctionManager {
       "complete-direct",
       "cancel-live",
       "cancel-direct",
+      "cancel-instant",
       "mark-submitted",
     ];
     const shouldExecuteHere = executeHereActions.includes(action);
@@ -940,6 +1108,8 @@ class UnifiedAuctionManager {
       }
       if (action.includes("live")) {
         this.goToDetailPage("live", bidId);
+      } else if (action.includes("instant")) {
+        this.goToDetailPage("instant", bidId);
       } else {
         this.goToDetailPage("direct", bidId);
       }
@@ -1006,6 +1176,9 @@ class UnifiedAuctionManager {
       } else if (action === "cancel-direct") {
         await cancelDirectBid(Number(bidId));
         alert("직접 경매 낙찰 실패 처리되었습니다.");
+      } else if (action === "cancel-instant") {
+        await cancelInstantPurchase(Number(bidId));
+        alert("바로 구매가 취소되었습니다.");
       } else if (action === "mark-submitted") {
         await markDirectBidAsSubmitted(Number(bidId));
         alert("플랫폼 반영 완료로 표시했습니다.");
@@ -1036,20 +1209,29 @@ class UnifiedAuctionManager {
   goToDetailPage(type, bidId) {
     if (type === "live") {
       window.location.href = `/admin/live-bids?highlight=${bidId}`;
+    } else if (type === "instant") {
+      window.location.href = `/admin/instant-purchases?highlight=${bidId}`;
     } else {
       window.location.href = `/admin/direct-bids?highlight=${bidId}`;
     }
   }
 
   // 결과 카운트 업데이트
-  updateResultCounts(liveRows = this.liveData, directRows = this.directData) {
+  updateResultCounts(
+    liveRows = this.liveData,
+    directRows = this.directData,
+    instantRows = this.instantData,
+  ) {
     const liveCount = liveRows?.length || 0;
     const directCount = directRows?.length || 0;
-    const totalCount = liveCount + directCount;
+    const instantCount = instantRows?.length || 0;
+    const totalCount = liveCount + directCount + instantCount;
 
     document.getElementById("allResultCount").textContent = totalCount;
     document.getElementById("liveResultCount").textContent = liveCount;
     document.getElementById("directResultCount").textContent = directCount;
+    const instantEl = document.getElementById("instantResultCount");
+    if (instantEl) instantEl.textContent = instantCount;
 
     // 결과 정보 업데이트
     let filterText = "";
@@ -1077,7 +1259,7 @@ class UnifiedAuctionManager {
     }
 
     document.getElementById("resultsCount").textContent =
-      `${filterText}: 총 ${totalCount}건 (현장 ${liveCount}건, 직접 ${directCount}건)`;
+      `${filterText}: 총 ${totalCount}건 (현장 ${liveCount}건, 직접 ${directCount}건, 바로구매 ${instantCount}건)`;
   }
 
   // 날짜 포맷팅 - 공통 함수 활용
@@ -1184,7 +1366,8 @@ function updateAllDetailNavState() {
   const prevBtn = document.getElementById("allDetailPrevBtn");
   const nextBtn = document.getElementById("allDetailNextBtn");
   if (prevBtn) prevBtn.disabled = allDetailImageIndex <= 0;
-  if (nextBtn) nextBtn.disabled = allDetailImageIndex >= allDetailImages.length - 1;
+  if (nextBtn)
+    nextBtn.disabled = allDetailImageIndex >= allDetailImages.length - 1;
 }
 
 function showAllDetailImageAt(index) {
@@ -1271,12 +1454,16 @@ async function openAllProductDetail(event, anchorEl) {
   modal.show();
 
   try {
-    const detail = await window.API.fetchAPI(`/detail/item-details/${encodeURIComponent(itemId)}`, {
-      method: "POST",
-      body: JSON.stringify({ aucNum, translateDescription: "ko" }),
-    });
+    const detail = await window.API.fetchAPI(
+      `/detail/item-details/${encodeURIComponent(itemId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ aucNum, translateDescription: "ko" }),
+      },
+    );
 
-    let detailImage = detail?.image || anchor.dataset.image || "/images/no-image.png";
+    let detailImage =
+      detail?.image || anchor.dataset.image || "/images/no-image.png";
     let detailImages = [detailImage];
     if (detail?.additional_images) {
       try {
@@ -1297,15 +1484,24 @@ async function openAllProductDetail(event, anchorEl) {
       brand: detail?.brand || anchor.dataset.brand || "-",
       category: detail?.category || anchor.dataset.category || "-",
       rank: detail?.rank || anchor.dataset.rank || "-",
-      accessoryCode: detail?.accessory_code || anchor.dataset.accessoryCode || "-",
-      scheduled: detail?.scheduled_date ? formatDateTime(detail.scheduled_date, true) : anchor.dataset.scheduled || "-",
-      description: detail?.description_ko || detail?.description || "설명 정보가 없습니다.",
+      accessoryCode:
+        detail?.accessory_code || anchor.dataset.accessoryCode || "-",
+      scheduled: detail?.scheduled_date
+        ? formatDateTime(detail.scheduled_date, true)
+        : anchor.dataset.scheduled || "-",
+      description:
+        detail?.description_ko ||
+        detail?.description ||
+        "설명 정보가 없습니다.",
       image: detailImage,
       originUrl: anchor.dataset.originUrl || "#",
     });
   } catch (error) {
     console.error("상품 상세 조회 실패:", error);
-    setAllDetailText("allDetailDescription", "상세 정보를 불러오지 못했습니다.");
+    setAllDetailText(
+      "allDetailDescription",
+      "상세 정보를 불러오지 못했습니다.",
+    );
   }
   return false;
 }

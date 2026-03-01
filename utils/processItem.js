@@ -73,7 +73,7 @@ async function processItem(
     }
 
     // --- Fetch User Bid Data ---
-    let userBids = { live: null, direct: null };
+    let userBids = { live: null, direct: null, instant: null };
     if (userId) {
       try {
         // Fetch live bid for this specific item and user
@@ -105,6 +105,21 @@ async function processItem(
         );
         if (directBids.length > 0) {
           userBids.direct = directBids[0];
+        }
+
+        // Fetch instant purchase for this specific item and user
+        const [instantPurchases] = await pool.query(
+          `
+          SELECT
+            'instant' as bid_type, id, item_id, purchase_price, status
+          FROM instant_purchases
+          WHERE user_id = ? AND item_id = ?
+          LIMIT 1
+          `,
+          [userId, itemId],
+        );
+        if (instantPurchases.length > 0) {
+          userBids.instant = instantPurchases[0];
         }
       } catch (bidError) {
         console.error(

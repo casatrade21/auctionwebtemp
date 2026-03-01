@@ -126,7 +126,12 @@ function buildItemUid() {
 }
 
 async function fetchBidMetaForWms(connection, { bidType, bidId, itemId }) {
-  const tableName = bidType === "live" ? "live_bids" : "direct_bids";
+  const tableName =
+    bidType === "live"
+      ? "live_bids"
+      : bidType === "instant"
+        ? "instant_purchases"
+        : "direct_bids";
   const numericBidId = Number(bidId);
   const [rows] = await connection.query(
     `
@@ -509,7 +514,7 @@ async function backfillMissingInternalBarcodesByBidLink(connection) {
     WHERE current_status <> 'COMPLETED'
       AND NULLIF(TRIM(internal_barcode), '') IS NULL
       AND NULLIF(TRIM(external_barcode), '') IS NULL
-      AND source_bid_type IN ('direct', 'live')
+      AND source_bid_type IN ('direct', 'live', 'instant')
       AND source_bid_id IS NOT NULL
     ORDER BY updated_at DESC, id DESC
     LIMIT 2000
@@ -667,6 +672,79 @@ async function backfillCompletedWmsItemsByBidStatus(connection) {
     `,
   );
 
+  // === instant_purchases 동기화 ===
+
+  // instant: domestic_arrived
+  await connection.query(
+    `
+    UPDATE wms_items wi
+    INNER JOIN instant_purchases p
+      ON wi.source_bid_type = 'instant' AND wi.source_bid_id = p.id
+    SET wi.current_location_code = 'DOMESTIC_ARRIVAL_ZONE',
+        wi.current_status = 'DOMESTIC_ARRIVED',
+        wi.updated_at = NOW()
+    WHERE p.status = 'completed'
+      AND p.shipping_status = 'domestic_arrived'
+      AND (
+        wi.current_location_code NOT IN ('DOMESTIC_ARRIVAL_ZONE', 'INBOUND_ZONE', 'HOLD_ZONE')
+        OR wi.current_status = 'COMPLETED'
+      )
+    `,
+  );
+
+  // instant: processing
+  await connection.query(
+    `
+    UPDATE wms_items wi
+    INNER JOIN instant_purchases p
+      ON wi.source_bid_type = 'instant' AND wi.source_bid_id = p.id
+    SET wi.current_location_code = 
+          IF(wi.current_location_code IN ('INTERNAL_REPAIR_ZONE', 'EXTERNAL_REPAIR_ZONE', 'REPAIR_DONE_ZONE'),
+             wi.current_location_code,
+             'INTERNAL_REPAIR_ZONE'),
+        wi.current_status = 'INTERNAL_REPAIR_IN_PROGRESS',
+        wi.updated_at = NOW()
+    WHERE p.status = 'completed'
+      AND p.shipping_status = 'processing'
+      AND (
+        wi.current_location_code NOT IN ('INTERNAL_REPAIR_ZONE', 'EXTERNAL_REPAIR_ZONE', 'REPAIR_DONE_ZONE')
+        OR wi.current_status = 'COMPLETED'
+      )
+    `,
+  );
+
+  // instant: shipped
+  await connection.query(
+    `
+    UPDATE wms_items wi
+    INNER JOIN instant_purchases p
+      ON wi.source_bid_type = 'instant' AND wi.source_bid_id = p.id
+    SET wi.current_location_code = 'OUTBOUND_ZONE',
+        wi.current_status = 'OUTBOUND_READY',
+        wi.updated_at = NOW()
+    WHERE p.status = 'completed'
+      AND p.shipping_status = 'shipped'
+      AND (
+        wi.current_location_code <> 'OUTBOUND_ZONE'
+        OR wi.current_status = 'COMPLETED'
+      )
+    `,
+  );
+
+  // instant: completed
+  await connection.query(
+    `
+    UPDATE wms_items wi
+    INNER JOIN instant_purchases p
+      ON wi.source_bid_type = 'instant' AND wi.source_bid_id = p.id
+    SET wi.current_status = 'COMPLETED',
+        wi.updated_at = NOW()
+    WHERE p.status = 'completed'
+      AND p.shipping_status = 'completed'
+      AND wi.current_status <> 'COMPLETED'
+    `,
+  );
+
   // ========== WMS → shipping_status 동기화 (역방향) ==========
 
   await connection.query(
@@ -727,6 +805,38 @@ async function backfillCompletedWmsItemsByBidStatus(connection) {
           WHEN wi.current_location_code = 'OUTBOUND_ZONE'
             THEN 'shipped'
           ELSE l.shipping_status
+        END
+    `,
+  );
+
+  // instant_purchases: WMS → shipping_status 역방향 동기화
+  await connection.query(
+    `
+    UPDATE instant_purchases p
+    INNER JOIN wms_items wi
+      ON wi.source_bid_type = 'instant' AND wi.source_bid_id = p.id
+    SET p.shipping_status = 
+        CASE 
+          WHEN wi.current_status = 'COMPLETED' THEN 'completed'
+          WHEN wi.current_location_code IN ('DOMESTIC_ARRIVAL_ZONE', 'INBOUND_ZONE', 'HOLD_ZONE') 
+            THEN 'domestic_arrived'
+          WHEN wi.current_location_code IN ('INTERNAL_REPAIR_ZONE', 'EXTERNAL_REPAIR_ZONE', 'REPAIR_DONE_ZONE')
+            THEN 'processing'
+          WHEN wi.current_location_code = 'OUTBOUND_ZONE'
+            THEN 'shipped'
+          ELSE p.shipping_status
+        END,
+        p.updated_at = NOW()
+    WHERE p.status = 'completed'
+      AND p.shipping_status <> CASE 
+          WHEN wi.current_status = 'COMPLETED' THEN 'completed'
+          WHEN wi.current_location_code IN ('DOMESTIC_ARRIVAL_ZONE', 'INBOUND_ZONE', 'HOLD_ZONE') 
+            THEN 'domestic_arrived'
+          WHEN wi.current_location_code IN ('INTERNAL_REPAIR_ZONE', 'EXTERNAL_REPAIR_ZONE', 'REPAIR_DONE_ZONE')
+            THEN 'processing'
+          WHEN wi.current_location_code = 'OUTBOUND_ZONE'
+            THEN 'shipped'
+          ELSE p.shipping_status
         END
     `,
   );

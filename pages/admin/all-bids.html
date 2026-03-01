@@ -20,6 +20,7 @@
           <a href="/admin">대시보드</a>
           <a href="/admin/live-bids">현장 경매 관리</a>
           <a href="/admin/direct-bids">직접 경매 관리</a>
+          <a href="/admin/instant-purchases">바로 구매 관리</a>
           <a href="/admin/all-bids" class="active">통합 경매 관리</a>
           <a href="/admin/bid-results">입찰 결과 & 정산</a>
           <a href="/admin/transactions">거래 내역 관리</a>
@@ -56,12 +57,19 @@
         <div class="all-bids-search-section">
           <div class="all-bids-search-row">
             <div class="search-input-wrap">
-              <input type="text" id="unifiedSearchInput" placeholder="상품ID, 제목, 브랜드, 유저ID 검색" />
+              <input
+                type="text"
+                id="unifiedSearchInput"
+                placeholder="상품ID, 제목, 브랜드, 유저ID 검색" />
               <button id="unifiedSearchBtn" class="btn">조회</button>
-              <button id="clearUnifiedSearchBtn" class="btn btn-ghost">초기화</button>
+              <button id="clearUnifiedSearchBtn" class="btn btn-ghost">
+                초기화
+              </button>
               <div class="unified-page-size">
                 <label for="unifiedPageSize">페이지당</label>
-                <select id="unifiedPageSize" class="form-control form-control-sm">
+                <select
+                  id="unifiedPageSize"
+                  class="form-control form-control-sm">
                   <option value="100" selected>100</option>
                   <option value="300">300</option>
                   <option value="500">500</option>
@@ -72,15 +80,24 @@
           <div class="quick-filters">
             <span class="quick-filters-label">바로 보기</span>
             <div class="quick-filters-segmented">
-              <button type="button" onclick="showUnsubmitted()" class="quick-filter-btn">
+              <button
+                type="button"
+                onclick="showUnsubmitted()"
+                class="quick-filter-btn">
                 <span>미반영</span>
                 <span class="quick-count" id="quickUnsubmittedCount">-</span>
               </button>
-              <button type="button" onclick="showSecondProposals()" class="quick-filter-btn">
+              <button
+                type="button"
+                onclick="showSecondProposals()"
+                class="quick-filter-btn">
                 <span>2차 제안 대기</span>
                 <span class="quick-count" id="quickSecondCount">-</span>
               </button>
-              <button type="button" onclick="resetFilters()" class="quick-filter-btn">
+              <button
+                type="button"
+                onclick="resetFilters()"
+                class="quick-filter-btn">
                 <span>전체 보기</span>
               </button>
             </div>
@@ -90,11 +107,22 @@
         <!-- 결과 영역 -->
         <div class="all-bids-results-section">
           <div class="all-bids-results-header">
-            <span id="resultsCount" class="results-count">전체 결과를 불러오는 중...</span>
+            <span id="resultsCount" class="results-count"
+              >전체 결과를 불러오는 중...</span
+            >
             <div class="result-type-segmented">
-              <div class="result-tab active" data-type="all">전체 <span id="allResultCount">-</span></div>
-              <div class="result-tab" data-type="live">현장 <span id="liveResultCount">-</span></div>
-              <div class="result-tab" data-type="direct">직접 <span id="directResultCount">-</span></div>
+              <div class="result-tab active" data-type="all">
+                전체 <span id="allResultCount">-</span>
+              </div>
+              <div class="result-tab" data-type="live">
+                현장 <span id="liveResultCount">-</span>
+              </div>
+              <div class="result-tab" data-type="direct">
+                직접 <span id="directResultCount">-</span>
+              </div>
+              <div class="result-tab" data-type="instant">
+                바로 구매 <span id="instantResultCount">-</span>
+              </div>
             </div>
           </div>
 
@@ -123,7 +151,12 @@
           </div>
 
           <div class="load-more-section">
-            <button id="loadMoreBtn" class="btn btn-ghost" style="display: none">더 많은 결과 보기</button>
+            <button
+              id="loadMoreBtn"
+              class="btn btn-ghost"
+              style="display: none">
+              더 많은 결과 보기
+            </button>
           </div>
         </div>
       </div>
@@ -157,23 +190,65 @@
         </div>
         <div class="modal-body live-detail-body">
           <div class="live-detail-left">
-            <div class="live-detail-main-image-wrap" id="allDetailMainImageWrap">
-              <button type="button" class="live-detail-nav prev" id="allDetailPrevBtn">&lt;</button>
-              <img id="allDetailMainImage" class="live-detail-main-image" src="/images/no-image.png" alt="상품 이미지" />
-              <button type="button" class="live-detail-nav next" id="allDetailNextBtn">&gt;</button>
+            <div
+              class="live-detail-main-image-wrap"
+              id="allDetailMainImageWrap">
+              <button
+                type="button"
+                class="live-detail-nav prev"
+                id="allDetailPrevBtn">
+                &lt;
+              </button>
+              <img
+                id="allDetailMainImage"
+                class="live-detail-main-image"
+                src="/images/no-image.png"
+                alt="상품 이미지" />
+              <button
+                type="button"
+                class="live-detail-nav next"
+                id="allDetailNextBtn">
+                &gt;
+              </button>
             </div>
             <div id="allDetailThumbs" class="live-detail-thumbs"></div>
           </div>
           <div class="live-detail-info">
-            <div class="live-detail-row"><strong>상품ID</strong><span id="allDetailItemId">-</span></div>
-            <div class="live-detail-row"><strong>제목</strong><span id="allDetailTitle">-</span></div>
-            <div class="live-detail-row"><strong>브랜드</strong><span id="allDetailBrand">-</span></div>
-            <div class="live-detail-row"><strong>카테고리</strong><span id="allDetailCategory">-</span></div>
-            <div class="live-detail-row"><strong>등급</strong><span id="allDetailRank">-</span></div>
-            <div class="live-detail-row"><strong>예정일시</strong><span id="allDetailScheduled">-</span></div>
-            <div class="live-detail-row"><strong>액세서리코드</strong><span id="allDetailAccessoryCode">-</span></div>
-            <div class="live-detail-row"><strong>설명</strong><span id="allDetailDescription">-</span></div>
-            <div class="live-detail-row"><strong>원본링크</strong><a id="allDetailOriginLink" href="#" target="_blank" rel="noopener noreferrer">열기</a></div>
+            <div class="live-detail-row">
+              <strong>상품ID</strong><span id="allDetailItemId">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>제목</strong><span id="allDetailTitle">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>브랜드</strong><span id="allDetailBrand">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>카테고리</strong><span id="allDetailCategory">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>등급</strong><span id="allDetailRank">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>예정일시</strong><span id="allDetailScheduled">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>액세서리코드</strong
+              ><span id="allDetailAccessoryCode">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>설명</strong><span id="allDetailDescription">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>원본링크</strong
+              ><a
+                id="allDetailOriginLink"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                >열기</a
+              >
+            </div>
           </div>
         </div>
         <div class="modal-footer">

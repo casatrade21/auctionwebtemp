@@ -46,7 +46,9 @@ const REPAIR_STAGE_CODES = {
 };
 
 let sheetsClientPromise = null;
-const SHEET_IMAGE_BASE_URL = String(process.env.FRONTEND_URL || "https://casastrade.com")
+const SHEET_IMAGE_BASE_URL = String(
+  process.env.FRONTEND_URL || "https://casastrade.com",
+)
   .trim()
   .replace(/\/+$/, "");
 const batchReconcileJobState = {
@@ -357,9 +359,15 @@ async function getRepairSheetSetting(conn, settingKey) {
   };
 }
 
-async function upsertRepairSheetSetting(conn, settingKey, sheetUrl, updatedBy = "admin") {
+async function upsertRepairSheetSetting(
+  conn,
+  settingKey,
+  sheetUrl,
+  updatedBy = "admin",
+) {
   const safeKey = normalizeSheetSettingKey(settingKey);
-  if (!safeKey) return { ok: false, error: "유효하지 않은 시트 설정 키입니다." };
+  if (!safeKey)
+    return { ok: false, error: "유효하지 않은 시트 설정 키입니다." };
   const parsed = parseGoogleSheetLink(sheetUrl);
   await conn.query(
     `
@@ -372,7 +380,13 @@ async function upsertRepairSheetSetting(conn, settingKey, sheetUrl, updatedBy = 
       updated_by = VALUES(updated_by),
       updated_at = NOW()
     `,
-    [safeKey, parsed.sheetUrl, parsed.sheetId, parsed.sheetGid, String(updatedBy || "admin")],
+    [
+      safeKey,
+      parsed.sheetUrl,
+      parsed.sheetId,
+      parsed.sheetGid,
+      String(updatedBy || "admin"),
+    ],
   );
   return {
     ok: true,
@@ -486,12 +500,18 @@ function normalizeHeader(value) {
 }
 
 function getHeaderIndex(headers, candidates) {
-  const normalizedCandidates = new Set(candidates.map((c) => normalizeHeader(c)));
-  return headers.findIndex((header) => normalizedCandidates.has(normalizeHeader(header)));
+  const normalizedCandidates = new Set(
+    candidates.map((c) => normalizeHeader(c)),
+  );
+  return headers.findIndex((header) =>
+    normalizedCandidates.has(normalizeHeader(header)),
+  );
 }
 
 function getHeaderIndexes(headers, candidates) {
-  const normalizedCandidates = new Set(candidates.map((c) => normalizeHeader(c)));
+  const normalizedCandidates = new Set(
+    candidates.map((c) => normalizeHeader(c)),
+  );
   return headers.reduce((acc, header, idx) => {
     if (normalizedCandidates.has(normalizeHeader(header))) acc.push(idx);
     return acc;
@@ -593,7 +613,13 @@ async function getSheetsClient() {
 }
 
 const SHEET_COL_CANDIDATES = {
-  barcode: ["internal_barcode", "barcode", "내부바코드", "내부 바코드", "바코드"],
+  barcode: [
+    "internal_barcode",
+    "barcode",
+    "내부바코드",
+    "내부 바코드",
+    "바코드",
+  ],
   quote: [
     "quote_amount",
     "repair_amount",
@@ -621,7 +647,13 @@ const SHEET_COL_CANDIDATES = {
   title: ["product_title", "title", "상품명", "상품명칭", "제목"],
   vendor: ["vendor_name", "vendor", "외주업체", "외주 업체", "업체"],
   image: ["image", "image_url", "사진", "이미지", "상품이미지", "상품사진"],
-  bidDate: ["낙찰일자", "낙찰일시", "예정일시", "scheduled_at", "scheduled_date"],
+  bidDate: [
+    "낙찰일자",
+    "낙찰일시",
+    "예정일시",
+    "scheduled_at",
+    "scheduled_date",
+  ],
   customer: ["고객명", "회원사", "company_name", "member_name"],
   progress: [
     "수선 진행 확정",
@@ -721,7 +753,10 @@ function findQuoteHeaderInfo(rows) {
       candidateHeaders,
       SHEET_COL_CANDIDATES.barcode,
     );
-    const candidateQuoteIdx = getHeaderIndex(candidateHeaders, SHEET_COL_CANDIDATES.quote);
+    const candidateQuoteIdx = getHeaderIndex(
+      candidateHeaders,
+      SHEET_COL_CANDIDATES.quote,
+    );
     if (candidateBarcodeIdx >= 0 && candidateQuoteIdx >= 0) {
       headerRowIndex = i;
       headers = candidateHeaders;
@@ -777,8 +812,14 @@ function findVendorSheetHeaderInfo(rows) {
     const row = rows[i] || [];
     const headers = row.map((h) => String(h || "").trim());
     if (!headers.some(Boolean)) continue;
-    const nextBarcodeIdx = getHeaderIndex(headers, SHEET_COL_CANDIDATES.barcode);
-    const nextBidDateIdx = getHeaderIndex(headers, SHEET_COL_CANDIDATES.bidDate);
+    const nextBarcodeIdx = getHeaderIndex(
+      headers,
+      SHEET_COL_CANDIDATES.barcode,
+    );
+    const nextBidDateIdx = getHeaderIndex(
+      headers,
+      SHEET_COL_CANDIDATES.bidDate,
+    );
     if (nextBarcodeIdx >= 0 && nextBidDateIdx >= 0) {
       headerRowIndex = i;
       barcodeIdx = nextBarcodeIdx;
@@ -811,14 +852,16 @@ async function sortVendorSheetRowsByBidDate({
   const rows = Array.isArray(resolved.rows) ? resolved.rows : [];
   if (!rows.length) return { ok: true, sorted: false, rowCount: 0 };
 
-  const { headerRowIndex, barcodeIdx, bidDateIdx } = findVendorSheetHeaderInfo(rows);
+  const { headerRowIndex, barcodeIdx, bidDateIdx } =
+    findVendorSheetHeaderInfo(rows);
   if (headerRowIndex < 0 || barcodeIdx < 0 || bidDateIdx < 0) {
     return { ok: true, sorted: false, rowCount: 0 };
   }
 
   const headRows = rows.slice(0, headerRowIndex + 1);
   const dataRows = rows.slice(headerRowIndex + 1);
-  if (dataRows.length <= 1) return { ok: true, sorted: false, rowCount: dataRows.length };
+  if (dataRows.length <= 1)
+    return { ok: true, sorted: false, rowCount: dataRows.length };
 
   const indexed = dataRows.map((row, idx) => ({ row, idx }));
   const sorted = [...indexed].sort((a, b) => {
@@ -834,7 +877,10 @@ async function sortVendorSheetRowsByBidDate({
   if (!changed) return { ok: true, sorted: false, rowCount: dataRows.length };
 
   const nextRows = [...headRows, ...sorted.map((entry) => entry.row)];
-  const width = Math.max(1, ...nextRows.map((row) => (Array.isArray(row) ? row.length : 0)));
+  const width = Math.max(
+    1,
+    ...nextRows.map((row) => (Array.isArray(row) ? row.length : 0)),
+  );
   const endCell = `${columnIndexToA1(width - 1)}${nextRows.length}`;
   const safeTitle = String(resolved.targetSheetTitle || "").replace(/'/g, "''");
   await sheets.spreadsheets.values.clear({
@@ -882,20 +928,46 @@ async function upsertVendorSheetRow({
   const title = resolved.targetSheetTitle;
   const rows = Array.isArray(resolved.rows) ? resolved.rows : [];
   const desiredHeaderDefs = [
-    { key: "bidDate", label: "낙찰일자", candidates: SHEET_COL_CANDIDATES.bidDate },
+    {
+      key: "bidDate",
+      label: "낙찰일자",
+      candidates: SHEET_COL_CANDIDATES.bidDate,
+    },
     { key: "title", label: "제목", candidates: SHEET_COL_CANDIDATES.title },
     { key: "image", label: "사진", candidates: SHEET_COL_CANDIDATES.image },
-    { key: "note", label: "수선요청내용", candidates: SHEET_COL_CANDIDATES.note },
-    { key: "customer", label: "고객명", candidates: SHEET_COL_CANDIDATES.customer },
-    { key: "vendor", label: "외주 업체", candidates: SHEET_COL_CANDIDATES.vendor },
+    {
+      key: "note",
+      label: "수선요청내용",
+      candidates: SHEET_COL_CANDIDATES.note,
+    },
+    {
+      key: "customer",
+      label: "고객명",
+      candidates: SHEET_COL_CANDIDATES.customer,
+    },
+    {
+      key: "vendor",
+      label: "외주 업체",
+      candidates: SHEET_COL_CANDIDATES.vendor,
+    },
     { key: "memo", label: "비고", candidates: ["비고", "memo", "note"] },
     { key: "quote", label: "견적", candidates: SHEET_COL_CANDIDATES.quote },
     { key: "eta", label: "작업 기간", candidates: SHEET_COL_CANDIDATES.eta },
-    { key: "barcode", label: "내부바코드", candidates: SHEET_COL_CANDIDATES.barcode },
-    { key: "progress", label: "수선 진행 확정", candidates: SHEET_COL_CANDIDATES.progress },
+    {
+      key: "barcode",
+      label: "내부바코드",
+      candidates: SHEET_COL_CANDIDATES.barcode,
+    },
+    {
+      key: "progress",
+      label: "수선 진행 확정",
+      candidates: SHEET_COL_CANDIDATES.progress,
+    },
   ];
 
-  let originalHeaders = rows[0] ? rows[0].map((v) => String(v || "").trim()) : [];
+  let originalHeaders = rows[0]
+    ? rows[0].map((v) => String(v || "").trim())
+    : [];
   let originalDataRows = rows.slice(1);
   if (!originalHeaders.length || isCorruptedHeaderRow(originalHeaders)) {
     originalHeaders = [];
@@ -912,8 +984,14 @@ async function upsertVendorSheetRow({
 
   const extraSourceIndexes = originalHeaders
     .map((_, idx) => idx)
-    .filter((idx) => !usedSourceIndexes.has(idx) && String(originalHeaders[idx] || "").trim());
-  const extraHeaders = extraSourceIndexes.map((idx) => String(originalHeaders[idx] || "").trim());
+    .filter(
+      (idx) =>
+        !usedSourceIndexes.has(idx) &&
+        String(originalHeaders[idx] || "").trim(),
+    );
+  const extraHeaders = extraSourceIndexes.map((idx) =>
+    String(originalHeaders[idx] || "").trim(),
+  );
 
   const headers = [...desiredHeaderDefs.map((d) => d.label), ...extraHeaders];
   const dataRows = originalDataRows.map((row) => {
@@ -977,7 +1055,10 @@ async function upsertVendorSheetRow({
     const formula = toSheetImageFormula(productImage);
     if (formula) newRow[imageIdx] = formula;
   }
-  newRow[titleIdx] = String(productTitle || "").trim() || String(newRow[titleIdx] || "").trim() || barcode;
+  newRow[titleIdx] =
+    String(productTitle || "").trim() ||
+    String(newRow[titleIdx] || "").trim() ||
+    barcode;
   if (customerName && String(customerName).trim()) {
     newRow[customerIdx] = String(customerName).trim();
   }
@@ -989,11 +1070,19 @@ async function upsertVendorSheetRow({
   } else if (!String(newRow[quoteIdx] || "").trim()) {
     newRow[quoteIdx] = "";
   }
-  if (workPeriod && String(workPeriod).trim() && !String(newRow[etaIdx] || "").trim()) {
+  if (
+    workPeriod &&
+    String(workPeriod).trim() &&
+    !String(newRow[etaIdx] || "").trim()
+  ) {
     newRow[etaIdx] = String(workPeriod).trim();
   }
   if (!String(newRow[etaIdx] || "").trim()) newRow[etaIdx] = "";
-  if (progressFlag !== undefined && progressFlag !== null && String(progressFlag).trim() !== "") {
+  if (
+    progressFlag !== undefined &&
+    progressFlag !== null &&
+    String(progressFlag).trim() !== ""
+  ) {
     newRow[progressIdx] = String(progressFlag).trim();
   }
   if (!String(newRow[memoIdx] || "").trim()) newRow[memoIdx] = "";
@@ -1117,7 +1206,9 @@ async function cleanupVendorSheetRowsByAllowedBarcodes({
   const { headerRowIndex, barcodeIdx } = findBarcodeHeaderInfo(rows);
   if (headerRowIndex < 0 || barcodeIdx < 0) return { ok: true, removed: 0 };
 
-  const allowedSet = new Set((allowedBarcodes || []).map((v) => normalizeBarcode(v)).filter(Boolean));
+  const allowedSet = new Set(
+    (allowedBarcodes || []).map((v) => normalizeBarcode(v)).filter(Boolean),
+  );
   const seen = new Set();
   const matchedRowNumbers = [];
   for (let rowNo = rows.length; rowNo >= headerRowIndex + 2; rowNo -= 1) {
@@ -1175,7 +1266,8 @@ async function fetchVendorSheetQuote({
       return { error: "시트 데이터가 비어 있습니다." };
     }
 
-    const { headerRowIndex, barcodeIdx, quoteIdx, etaIdx, noteIdx } = findQuoteHeaderInfo(rows);
+    const { headerRowIndex, barcodeIdx, quoteIdx, etaIdx, noteIdx } =
+      findQuoteHeaderInfo(rows);
     if (headerRowIndex < 0 || barcodeIdx < 0 || quoteIdx < 0) {
       const preview = rows
         .slice(0, 3)
@@ -1285,7 +1377,10 @@ async function removeRepairCaseFromVendorSheets({
     .trim()
     .toUpperCase();
   if (!["INTERNAL", "EXTERNAL"].includes(normalizedDecision)) {
-    return { ok: false, error: "내부/외부 수선건만 시트에서 삭제할 수 있습니다." };
+    return {
+      ok: false,
+      error: "내부/외부 수선건만 시트에서 삭제할 수 있습니다.",
+    };
   }
   const normalizedBarcode = String(barcode || "").trim();
   if (!normalizedBarcode) return { ok: false, error: "바코드가 없습니다." };
@@ -1294,7 +1389,10 @@ async function removeRepairCaseFromVendorSheets({
     normalizedDecision === "INTERNAL"
       ? INTERNAL_VENDOR_NAME
       : String(vendorName || "").trim();
-  const vendorSheet = await resolveRepairVendorSheetInfo(conn, targetVendorName);
+  const vendorSheet = await resolveRepairVendorSheetInfo(
+    conn,
+    targetVendorName,
+  );
   if (!vendorSheet.sheetId) {
     return { ok: false, error: "시트가 연결되지 않아 삭제를 건너뜀" };
   }
@@ -1314,11 +1412,14 @@ async function removeRepairCaseFromVendorSheets({
     fallbackToFirst: false,
     barcode: normalizedBarcode,
   });
-  if (completedDeleted?.error) return { ok: false, error: completedDeleted.error };
+  if (completedDeleted?.error)
+    return { ok: false, error: completedDeleted.error };
 
   return {
     ok: true,
-    removed: Number(activeDeleted?.removed || 0) + Number(completedDeleted?.removed || 0),
+    removed:
+      Number(activeDeleted?.removed || 0) +
+      Number(completedDeleted?.removed || 0),
     removedActive: Number(activeDeleted?.removed || 0),
     removedCompleted: Number(completedDeleted?.removed || 0),
   };
@@ -1334,8 +1435,11 @@ async function syncRepairCaseToVendorSheet({
   sheetState,
   skipSort = false,
 }) {
-  const barcode = String(itemRow.internal_barcode || itemRow.external_barcode || "").trim();
-  if (!barcode) return { ok: false, error: "내부바코드가 없어 시트 전송할 수 없습니다." };
+  const barcode = String(
+    itemRow.internal_barcode || itemRow.external_barcode || "",
+  ).trim();
+  if (!barcode)
+    return { ok: false, error: "내부바코드가 없어 시트 전송할 수 없습니다." };
 
   if (sheetState === "NONE") {
     const removed = await removeRepairCaseFromVendorSheets({
@@ -1359,7 +1463,9 @@ async function syncRepairCaseToVendorSheet({
 
   const item = await fetchRepairItemWithMeta(conn, caseRow.item_id);
   const targetSheetName =
-    sheetState === "COMPLETED" ? VENDOR_COMPLETED_SHEET_NAME : VENDOR_ACTIVE_SHEET_NAME;
+    sheetState === "COMPLETED"
+      ? VENDOR_COMPLETED_SHEET_NAME
+      : VENDOR_ACTIVE_SHEET_NAME;
   const pushed = await upsertVendorSheetRow({
     sheetId: vendorSheet.sheetId,
     sheetGid: vendorSheet.sheetGid,
@@ -1373,12 +1479,15 @@ async function syncRepairCaseToVendorSheet({
     workPeriod: caseRow.repair_eta || "",
     vendorName,
     productImage: item?.product_image || "",
-    progressFlag: caseRow.case_state === REPAIR_CASE_STATES.ACCEPTED ? "TRUE" : "FALSE",
+    progressFlag:
+      caseRow.case_state === REPAIR_CASE_STATES.ACCEPTED ? "TRUE" : "FALSE",
   });
   if (pushed?.error) return { ok: false, error: pushed.error };
 
   const deleteFromOpposite =
-    sheetState === "COMPLETED" ? VENDOR_ACTIVE_SHEET_NAME : VENDOR_COMPLETED_SHEET_NAME;
+    sheetState === "COMPLETED"
+      ? VENDOR_ACTIVE_SHEET_NAME
+      : VENDOR_COMPLETED_SHEET_NAME;
   const removedOpposite = await deleteVendorSheetRowsByBarcode({
     sheetId: vendorSheet.sheetId,
     sheetGid: vendorSheet.sheetGid,
@@ -1386,7 +1495,8 @@ async function syncRepairCaseToVendorSheet({
     fallbackToFirst: deleteFromOpposite === VENDOR_ACTIVE_SHEET_NAME,
     barcode,
   });
-  if (removedOpposite?.error) return { ok: false, error: removedOpposite.error };
+  if (removedOpposite?.error)
+    return { ok: false, error: removedOpposite.error };
 
   if (!skipSort) {
     const sorted = await sortVendorSheetRowsByBidDate({
@@ -1395,7 +1505,8 @@ async function syncRepairCaseToVendorSheet({
       sheetName: targetSheetName,
       fallbackToFirst: targetSheetName === VENDOR_ACTIVE_SHEET_NAME,
     });
-    if (!sorted?.ok) return { ok: false, error: sorted.error || "시트 예정일 정렬 실패" };
+    if (!sorted?.ok)
+      return { ok: false, error: sorted.error || "시트 예정일 정렬 실패" };
   }
 
   return {
@@ -1447,8 +1558,7 @@ async function ensureGoogleSheetTab({
         ],
       },
     });
-    const created =
-      createRes?.data?.replies?.[0]?.addSheet?.properties || null;
+    const created = createRes?.data?.replies?.[0]?.addSheet?.properties || null;
     if (created?.title) {
       return { title: created.title, sheetId: created.sheetId };
     }
@@ -1512,9 +1622,14 @@ async function pushRepairCaseToDecisionSheet({
     return { ok: false, error: "내부/외부 수선건만 시트 전송할 수 있습니다." };
   }
   if (
-    [REPAIR_CASE_STATES.ARRIVED, REPAIR_CASE_STATES.REJECTED].includes(caseState)
+    [REPAIR_CASE_STATES.ARRIVED, REPAIR_CASE_STATES.REJECTED].includes(
+      caseState,
+    )
   ) {
-    return { ok: false, error: "1단계(국내도착)/거절 건은 시트 전송 대상이 아닙니다." };
+    return {
+      ok: false,
+      error: "1단계(국내도착)/거절 건은 시트 전송 대상이 아닙니다.",
+    };
   }
   if (normalizedExpected && decisionType !== normalizedExpected) {
     return {
@@ -1526,7 +1641,9 @@ async function pushRepairCaseToDecisionSheet({
     };
   }
 
-  const barcode = String(row.internal_barcode || row.external_barcode || "").trim();
+  const barcode = String(
+    row.internal_barcode || row.external_barcode || "",
+  ).trim();
   if (!barcode) {
     return { ok: false, error: "내부바코드가 없어 시트 전송할 수 없습니다." };
   }
@@ -1623,7 +1740,10 @@ async function removeRepairCaseFromDecisionSheet({
     return { ok: false, error: "바코드가 없어 시트에서 삭제할 수 없습니다." };
   }
   if (!["INTERNAL", "EXTERNAL"].includes(normalizedDecision)) {
-    return { ok: false, error: "내부/외부 수선건만 시트에서 삭제할 수 있습니다." };
+    return {
+      ok: false,
+      error: "내부/외부 수선건만 시트에서 삭제할 수 있습니다.",
+    };
   }
   return removeRepairCaseFromVendorSheets({
     conn,
@@ -1652,7 +1772,11 @@ function toDateTimeKey(value) {
 }
 
 function toRepairStageLabel(stageCode) {
-  switch (String(stageCode || "").trim().toUpperCase()) {
+  switch (
+    String(stageCode || "")
+      .trim()
+      .toUpperCase()
+  ) {
     case REPAIR_STAGE_CODES.DOMESTIC:
       return "1) 국내도착";
     case REPAIR_STAGE_CODES.EXTERNAL_WAITING:
@@ -1701,7 +1825,10 @@ function toSheetSyncLabel(row) {
 }
 
 async function resolveRepairMainSheetConfig(conn) {
-  const configuredMain = await getRepairSheetSetting(conn, SHEET_SETTING_KEYS.MAIN_OVERVIEW);
+  const configuredMain = await getRepairSheetSetting(
+    conn,
+    SHEET_SETTING_KEYS.MAIN_OVERVIEW,
+  );
   if (configuredMain?.sheetId) {
     return {
       sheetId: configuredMain.sheetId,
@@ -1723,7 +1850,10 @@ async function resolveRepairMainSheetConfig(conn) {
     };
   }
 
-  const internalVendor = await resolveRepairVendorSheetInfo(conn, INTERNAL_VENDOR_NAME);
+  const internalVendor = await resolveRepairVendorSheetInfo(
+    conn,
+    INTERNAL_VENDOR_NAME,
+  );
   return {
     sheetId: internalVendor.sheetId || null,
     // 내부업체 시트 gid를 메인집계 탭 gid로 재사용하면 상세탭이 덮어써질 수 있음.
@@ -1750,8 +1880,12 @@ async function resolveRepairCompletedSheetConfig(conn) {
   }
 
   const envSheetId = String(process.env.REPAIR_COMPLETED_SHEET_ID || "").trim();
-  const envSheetGid = String(process.env.REPAIR_COMPLETED_SHEET_GID || "").trim();
-  const envSheetName = String(process.env.REPAIR_COMPLETED_SHEET_NAME || "").trim();
+  const envSheetGid = String(
+    process.env.REPAIR_COMPLETED_SHEET_GID || "",
+  ).trim();
+  const envSheetName = String(
+    process.env.REPAIR_COMPLETED_SHEET_NAME || "",
+  ).trim();
   if (envSheetId) {
     return {
       sheetId: envSheetId,
@@ -1821,11 +1955,14 @@ async function syncRepairDailyOverviewSheet(conn) {
     LEFT JOIN live_bids l
       ON i.source_bid_type = 'live'
      AND i.source_bid_id = l.id
+    LEFT JOIN instant_purchases ip
+      ON i.source_bid_type = 'instant'
+     AND i.source_bid_id = ip.id
     LEFT JOIN users u
-      ON u.id = COALESCE(d.user_id, l.user_id)
+      ON u.id = COALESCE(d.user_id, l.user_id, ip.user_id)
     LEFT JOIN crawled_items ci
       ON CONVERT(ci.item_id USING utf8mb4) =
-         CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id) USING utf8mb4)
+         CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id, ip.item_id) USING utf8mb4)
     WHERE
       rc.id IS NOT NULL
       AND UPPER(TRIM(COALESCE(rc.case_state, ''))) <> 'ARRIVED'
@@ -1886,7 +2023,8 @@ async function syncRepairDailyOverviewSheet(conn) {
     })
     .filter(Boolean)
     .sort((a, b) => {
-      if (a.scheduledAtTs !== b.scheduledAtTs) return a.scheduledAtTs - b.scheduledAtTs;
+      if (a.scheduledAtTs !== b.scheduledAtTs)
+        return a.scheduledAtTs - b.scheduledAtTs;
       if (a.updatedAtTs !== b.updatedAtTs) return a.updatedAtTs - b.updatedAtTs;
       return String(a.barcode || "").localeCompare(String(b.barcode || ""));
     });
@@ -1999,11 +2137,14 @@ async function syncRepairCompletedHistorySheet(conn) {
     LEFT JOIN live_bids l
       ON i.source_bid_type = 'live'
      AND i.source_bid_id = l.id
+    LEFT JOIN instant_purchases ip
+      ON i.source_bid_type = 'instant'
+     AND i.source_bid_id = ip.id
     LEFT JOIN users u
-      ON u.id = COALESCE(d.user_id, l.user_id)
+      ON u.id = COALESCE(d.user_id, l.user_id, ip.user_id)
     LEFT JOIN crawled_items ci
       ON CONVERT(ci.item_id USING utf8mb4) =
-         CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id) USING utf8mb4)
+         CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id, ip.item_id) USING utf8mb4)
     WHERE
       rc.id IS NOT NULL
       AND UPPER(TRIM(COALESCE(rc.case_state, ''))) = 'DONE'
@@ -2061,7 +2202,8 @@ async function syncRepairCompletedHistorySheet(conn) {
     })
     .filter(Boolean)
     .sort((a, b) => {
-      if (a.scheduledAtTs !== b.scheduledAtTs) return a.scheduledAtTs - b.scheduledAtTs;
+      if (a.scheduledAtTs !== b.scheduledAtTs)
+        return a.scheduledAtTs - b.scheduledAtTs;
       if (a.updatedAtTs !== b.updatedAtTs) return a.updatedAtTs - b.updatedAtTs;
       return String(a.barcode || "").localeCompare(String(b.barcode || ""));
     })
@@ -2143,8 +2285,14 @@ async function syncRepairCompletedHistorySheet(conn) {
     const existing = rowMap.get(barcodeKey);
     if (existing) {
       const rowNo = existing.rowNo;
-      const nextValues = Array.from({ length: headers.length }, (_, idx) => values[idx] ?? "");
-      if (!String(nextValues[imageIdx] || "").trim() && String(existing.row[imageIdx] || "").trim()) {
+      const nextValues = Array.from(
+        { length: headers.length },
+        (_, idx) => values[idx] ?? "",
+      );
+      if (
+        !String(nextValues[imageIdx] || "").trim() &&
+        String(existing.row[imageIdx] || "").trim()
+      ) {
         nextValues[imageIdx] = existing.row[imageIdx];
       }
       await sheets.spreadsheets.values.update({
@@ -2332,10 +2480,22 @@ async function resolveSourceBid(conn, item) {
     `,
     [sourceItemId],
   );
+  const [instantRows] = await conn.query(
+    `
+    SELECT id, updated_at
+    FROM instant_purchases
+    WHERE item_id = ?
+      AND status = 'completed'
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 1
+    `,
+    [sourceItemId],
+  );
 
   const candidates = [
     directRows[0] ? { bidType: "direct", ...directRows[0] } : null,
     liveRows[0] ? { bidType: "live", ...liveRows[0] } : null,
+    instantRows[0] ? { bidType: "instant", ...instantRows[0] } : null,
   ]
     .filter(Boolean)
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
@@ -2404,7 +2564,11 @@ function deriveRepairStage(caseState, decisionType, currentLocationCode) {
   if (stageCaseState === REPAIR_CASE_STATES.PROPOSED) {
     return REPAIR_STAGE_CODES.PROPOSED;
   }
-  if ([REPAIR_CASE_STATES.READY_TO_SEND, REPAIR_CASE_STATES.REJECTED].includes(stageCaseState)) {
+  if (
+    [REPAIR_CASE_STATES.READY_TO_SEND, REPAIR_CASE_STATES.REJECTED].includes(
+      stageCaseState,
+    )
+  ) {
     return REPAIR_STAGE_CODES.READY_TO_SEND;
   }
   if (
@@ -2432,7 +2596,7 @@ async function hideInvalidDomesticArrivals(conn) {
         NULLIF(TRIM(i.source_item_id), '') IS NULL
         AND (
           i.source_bid_type IS NULL
-          OR i.source_bid_type NOT IN ('live', 'direct')
+          OR i.source_bid_type NOT IN ('live', 'direct', 'instant')
           OR i.source_bid_id IS NULL
         )
       )
@@ -2481,6 +2645,19 @@ async function hideInvalidDomesticArrivals(conn) {
       AND l.shipping_status <> 'completed'
     `,
   );
+
+  await conn.query(
+    `
+    UPDATE instant_purchases ip
+    INNER JOIN wms_items wi
+      ON wi.source_bid_type = 'instant' AND wi.source_bid_id = ip.id
+    SET ip.shipping_status = 'completed',
+        ip.updated_at = NOW()
+    WHERE ip.status = 'completed'
+      AND wi.current_status = 'COMPLETED'
+      AND ip.shipping_status <> 'completed'
+    `,
+  );
 }
 
 async function reconcileDoneCasesToRepairDoneZone(conn) {
@@ -2526,7 +2703,12 @@ async function syncBidStatusByLocation(conn, item, toLocationCode) {
 
   // WMS 스캔 위치에 따라 bid 테이블의 shipping_status를 직접 업데이트한다.
   // status = 'completed'인 경우에만 허용 (불변성 보장)
-  const bidTable = bidType === "direct" ? "direct_bids" : "live_bids";
+  const bidTable =
+    bidType === "direct"
+      ? "direct_bids"
+      : bidType === "instant"
+        ? "instant_purchases"
+        : "live_bids";
   await conn.query(
     `UPDATE ${bidTable} SET shipping_status = ?, updated_at = NOW() WHERE id = ? AND status = 'completed'`,
     [nextBidStatus, bidId],
@@ -2577,11 +2759,14 @@ async function fetchRepairItemWithMeta(conn, itemId) {
     LEFT JOIN live_bids l
       ON i.source_bid_type = 'live'
      AND i.source_bid_id = l.id
+    LEFT JOIN instant_purchases ip
+      ON i.source_bid_type = 'instant'
+     AND i.source_bid_id = ip.id
     LEFT JOIN users u
-      ON u.id = COALESCE(d.user_id, l.user_id)
+      ON u.id = COALESCE(d.user_id, l.user_id, ip.user_id)
     LEFT JOIN crawled_items ci
       ON CONVERT(ci.item_id USING utf8mb4) =
-         CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id) USING utf8mb4)
+         CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id, ip.item_id) USING utf8mb4)
     WHERE i.id = ?
     LIMIT 1
     `,
@@ -2619,13 +2804,24 @@ router.put("/sheet-settings/:key", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const normalizedKey = normalizeSheetSettingKey(req.params?.key);
     if (!normalizedKey) {
-      return res.status(400).json({ ok: false, message: "유효하지 않은 시트 설정 키입니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "유효하지 않은 시트 설정 키입니다." });
     }
-    const sheetUrl = String(req.body?.sheetUrl || req.body?.sheet_url || "").trim();
+    const sheetUrl = String(
+      req.body?.sheetUrl || req.body?.sheet_url || "",
+    ).trim();
     const loginId = String(req.session?.user?.login_id || "admin");
-    const saved = await upsertRepairSheetSetting(conn, normalizedKey, sheetUrl, loginId);
+    const saved = await upsertRepairSheetSetting(
+      conn,
+      normalizedKey,
+      sheetUrl,
+      loginId,
+    );
     if (!saved.ok) {
-      return res.status(400).json({ ok: false, message: saved.error || "시트 설정 저장 실패" });
+      return res
+        .status(400)
+        .json({ ok: false, message: saved.error || "시트 설정 저장 실패" });
     }
     res.json({
       ok: true,
@@ -2646,11 +2842,15 @@ router.post("/sheets/sync-main-overview", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const result = await syncRepairDailyOverviewSheet(conn);
     if (!result?.ok && !result?.skipped) {
-      return res.status(500).json({ ok: false, message: result?.reason || "전체현황 동기화 실패" });
+      return res
+        .status(500)
+        .json({ ok: false, message: result?.reason || "전체현황 동기화 실패" });
     }
     res.json({
       ok: true,
-      message: result?.skipped ? `전체현황 동기화 건너뜀: ${result.reason}` : "전체현황 동기화 완료",
+      message: result?.skipped
+        ? `전체현황 동기화 건너뜀: ${result.reason}`
+        : "전체현황 동기화 완료",
       result,
     });
   } catch (error) {
@@ -2667,11 +2867,15 @@ router.post("/sheets/sync-completed-history", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const result = await syncRepairCompletedHistorySheet(conn);
     if (!result?.ok && !result?.skipped) {
-      return res.status(500).json({ ok: false, message: result?.reason || "완료내역 동기화 실패" });
+      return res
+        .status(500)
+        .json({ ok: false, message: result?.reason || "완료내역 동기화 실패" });
     }
     res.json({
       ok: true,
-      message: result?.skipped ? `완료내역 동기화 건너뜀: ${result.reason}` : "완료내역 동기화 완료",
+      message: result?.skipped
+        ? `완료내역 동기화 건너뜀: ${result.reason}`
+        : "완료내역 동기화 완료",
       result,
     });
   } catch (error) {
@@ -2688,7 +2892,9 @@ router.post("/sheets/sync-vendor/:id", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const vendorId = Number(req.params?.id);
     if (!vendorId) {
-      return res.status(400).json({ ok: false, message: "업체 id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "업체 id가 필요합니다." });
     }
     const [rows] = await conn.query(
       `
@@ -2701,7 +2907,9 @@ router.post("/sheets/sync-vendor/:id", isAdmin, async (req, res) => {
     );
     const vendor = rows[0] || null;
     if (!vendor || Number(vendor.is_active || 0) !== 1) {
-      return res.status(404).json({ ok: false, message: "업체를 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "업체를 찾을 수 없습니다." });
     }
 
     const loginId = String(req.session?.user?.login_id || "admin");
@@ -2764,9 +2972,13 @@ router.post("/vendors", isAdmin, async (req, res) => {
   try {
     await ensureRepairTables(conn);
     const name = String(req.body?.name || "").trim();
-    const sheetUrl = String(req.body?.sheetUrl || req.body?.sheet_url || "").trim();
+    const sheetUrl = String(
+      req.body?.sheetUrl || req.body?.sheet_url || "",
+    ).trim();
     if (!name) {
-      return res.status(400).json({ ok: false, message: "업체명을 입력하세요." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "업체명을 입력하세요." });
     }
 
     const parsed = parseGoogleSheetLink(sheetUrl);
@@ -2808,13 +3020,19 @@ router.put("/vendors/:id", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const vendorId = Number(req.params?.id);
     if (!vendorId) {
-      return res.status(400).json({ ok: false, message: "업체 id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "업체 id가 필요합니다." });
     }
 
     const name = String(req.body?.name || req.body?.vendorName || "").trim();
-    const sheetUrl = String(req.body?.sheetUrl || req.body?.sheet_url || "").trim();
+    const sheetUrl = String(
+      req.body?.sheetUrl || req.body?.sheet_url || "",
+    ).trim();
     if (!name) {
-      return res.status(400).json({ ok: false, message: "업체명을 입력하세요." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "업체명을 입력하세요." });
     }
 
     await conn.beginTransaction();
@@ -2831,7 +3049,9 @@ router.put("/vendors/:id", isAdmin, async (req, res) => {
     const vendor = vendorRows[0];
     if (!vendor) {
       await conn.rollback();
-      return res.status(404).json({ ok: false, message: "외주업체를 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "외주업체를 찾을 수 없습니다." });
     }
     if (vendor.name === INTERNAL_VENDOR_NAME && name !== INTERNAL_VENDOR_NAME) {
       await conn.rollback();
@@ -2840,7 +3060,8 @@ router.put("/vendors/:id", isAdmin, async (req, res) => {
         message: "내부업체 이름은 변경할 수 없습니다. 시트 링크만 수정하세요.",
       });
     }
-    const nextName = vendor.name === INTERNAL_VENDOR_NAME ? INTERNAL_VENDOR_NAME : name;
+    const nextName =
+      vendor.name === INTERNAL_VENDOR_NAME ? INTERNAL_VENDOR_NAME : name;
 
     const parsed = parseGoogleSheetLink(sheetUrl);
     await conn.query(
@@ -2889,7 +3110,12 @@ router.put("/vendors/:id", isAdmin, async (req, res) => {
     } catch (_) {}
     console.error("repair vendor update error:", error);
     if (error?.code === "ER_DUP_ENTRY") {
-      return res.status(409).json({ ok: false, message: "같은 이름의 외주업체가 이미 존재합니다." });
+      return res
+        .status(409)
+        .json({
+          ok: false,
+          message: "같은 이름의 외주업체가 이미 존재합니다.",
+        });
     }
     res.status(500).json({ ok: false, message: "외주업체 수정 실패" });
   } finally {
@@ -2903,7 +3129,9 @@ router.delete("/vendors/:id", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const vendorId = Number(req.params?.id);
     if (!vendorId) {
-      return res.status(400).json({ ok: false, message: "업체 id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "업체 id가 필요합니다." });
     }
 
     const [vendorRows] = await conn.query(
@@ -2917,10 +3145,14 @@ router.delete("/vendors/:id", isAdmin, async (req, res) => {
     );
     const vendor = vendorRows[0];
     if (!vendor) {
-      return res.status(404).json({ ok: false, message: "외주업체를 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "외주업체를 찾을 수 없습니다." });
     }
     if (vendor.name === INTERNAL_VENDOR_NAME) {
-      return res.status(400).json({ ok: false, message: "내부업체는 삭제할 수 없습니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "내부업체는 삭제할 수 없습니다." });
     }
 
     await conn.query(
@@ -2971,7 +3203,7 @@ router.get("/domestic-arrivals", isAdmin, async (req, res) => {
         NULLIF(TRIM(i.internal_barcode), ''),
         NULLIF(TRIM(i.external_barcode), '')
       ) REGEXP '[0-9]'`,
-      "(COALESCE(d.id, l.id) IS NOT NULL OR ci.item_id IS NOT NULL)",
+      "(COALESCE(d.id, l.id, ip.id) IS NOT NULL OR ci.item_id IS NOT NULL)",
     ];
     const params = [];
 
@@ -2981,7 +3213,7 @@ router.get("/domestic-arrivals", isAdmin, async (req, res) => {
           i.internal_barcode LIKE ?
           OR i.external_barcode LIKE ?
           OR COALESCE(u.company_name, i.member_name, '') LIKE ?
-          OR COALESCE(i.source_item_id, d.item_id, l.item_id, '') LIKE ?
+          OR COALESCE(i.source_item_id, d.item_id, l.item_id, ip.item_id, '') LIKE ?
           OR COALESCE(ci.original_title, ci.title, '') LIKE ?
         )`,
       );
@@ -3054,15 +3286,18 @@ router.get("/domestic-arrivals", isAdmin, async (req, res) => {
       LEFT JOIN live_bids l
         ON i.source_bid_type = 'live'
        AND i.source_bid_id = l.id
+      LEFT JOIN instant_purchases ip
+        ON i.source_bid_type = 'instant'
+       AND i.source_bid_id = ip.id
       LEFT JOIN wms_repair_cases rc
         ON rc.item_id = i.id
       LEFT JOIN wms_repair_vendors rv
         ON rv.name = rc.vendor_name
       LEFT JOIN users u
-        ON u.id = COALESCE(d.user_id, l.user_id)
+        ON u.id = COALESCE(d.user_id, l.user_id, ip.user_id)
       LEFT JOIN crawled_items ci
         ON CONVERT(ci.item_id USING utf8mb4) =
-           CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id) USING utf8mb4)
+           CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id, ip.item_id) USING utf8mb4)
       WHERE ${where.join(" AND ")}
       ORDER BY scheduled_at ASC, i.updated_at ASC, i.id ASC
       LIMIT ?
@@ -3140,11 +3375,14 @@ router.get("/cases", isAdmin, async (req, res) => {
       LEFT JOIN live_bids l
         ON i.source_bid_type = 'live'
        AND i.source_bid_id = l.id
+      LEFT JOIN instant_purchases ip
+        ON i.source_bid_type = 'instant'
+       AND i.source_bid_id = ip.id
       LEFT JOIN users u
-        ON u.id = COALESCE(d.user_id, l.user_id)
+        ON u.id = COALESCE(d.user_id, l.user_id, ip.user_id)
       LEFT JOIN crawled_items ci
         ON CONVERT(ci.item_id USING utf8mb4) =
-           CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id) USING utf8mb4)
+           CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id, ip.item_id) USING utf8mb4)
       LEFT JOIN wms_repair_vendors rv
         ON rv.name = rc.vendor_name
       ORDER BY scheduled_at ASC, rc.updated_at ASC, rc.id ASC
@@ -3175,15 +3413,21 @@ router.post("/cases", isAdmin, async (req, res) => {
     const repairEta = String(req.body?.repairEta || "").trim();
     const internalNote = String(req.body?.internalNote || "").trim();
     const repairAmount = toAmount(req.body?.repairAmount);
-    const caseStateInput = String(req.body?.caseState || "").trim().toUpperCase();
-    const action = String(req.body?.action || "").trim().toLowerCase();
+    const caseStateInput = String(req.body?.caseState || "")
+      .trim()
+      .toUpperCase();
+    const action = String(req.body?.action || "")
+      .trim()
+      .toLowerCase();
     const proposeRequested =
       action === "propose" ||
       caseStateInput === REPAIR_CASE_STATES.PROPOSED ||
       req.body?.isProposal === true;
 
     if (!itemId) {
-      return res.status(400).json({ ok: false, message: "itemId가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "itemId가 필요합니다." });
     }
     if (!["INTERNAL", "EXTERNAL", "NONE"].includes(decisionType)) {
       return res.status(400).json({
@@ -3202,7 +3446,10 @@ router.post("/cases", isAdmin, async (req, res) => {
         .status(400)
         .json({ ok: false, message: "외부수선은 외주업체 선택이 필요합니다." });
     }
-    if ((decisionType === "INTERNAL" || proposeRequested) && repairAmount === null) {
+    if (
+      (decisionType === "INTERNAL" || proposeRequested) &&
+      repairAmount === null
+    ) {
       return res.status(400).json({
         ok: false,
         message: "견적금액을 입력하세요.",
@@ -3214,7 +3461,9 @@ router.post("/cases", isAdmin, async (req, res) => {
     const item = await fetchRepairItemWithMeta(conn, itemId);
     if (!item) {
       await conn.rollback();
-      return res.status(404).json({ ok: false, message: "물건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "물건을 찾을 수 없습니다." });
     }
 
     const [existingRows] = await conn.query(
@@ -3237,7 +3486,8 @@ router.post("/cases", isAdmin, async (req, res) => {
       await conn.rollback();
       return res.status(400).json({
         ok: false,
-        message: "이미 진행중/완료된 수선건은 국내도착 단계에서 수정할 수 없습니다.",
+        message:
+          "이미 진행중/완료된 수선건은 국내도착 단계에서 수정할 수 없습니다.",
       });
     }
 
@@ -3383,7 +3633,11 @@ router.post("/cases", isAdmin, async (req, res) => {
               [loginId, caseId],
             );
           }
-          autoSheet = { ok: true, created: !!pushed.created, type: decisionType };
+          autoSheet = {
+            ok: true,
+            created: !!pushed.created,
+            type: decisionType,
+          };
         }
       } catch (error) {
         autoSheet = {
@@ -3393,7 +3647,10 @@ router.post("/cases", isAdmin, async (req, res) => {
         };
       }
     }
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "save-case");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "save-case",
+    );
 
     const baseMessage = proposeRequested
       ? "고객응답대기 단계로 이동했습니다."
@@ -3440,7 +3697,9 @@ router.post("/cases/:id/push-external-sheet", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const caseId = Number(req.params?.id);
     if (!caseId) {
-      return res.status(400).json({ ok: false, message: "case id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "case id가 필요합니다." });
     }
 
     await conn.beginTransaction();
@@ -3457,7 +3716,10 @@ router.post("/cases/:id/push-external-sheet", isAdmin, async (req, res) => {
     }
 
     await conn.commit();
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "push-external-sheet");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "push-external-sheet",
+    );
     res.json({
       ok: true,
       message: pushed.created
@@ -3487,7 +3749,9 @@ router.post("/cases/:id/push-internal-sheet", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const caseId = Number(req.params?.id);
     if (!caseId) {
-      return res.status(400).json({ ok: false, message: "case id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "case id가 필요합니다." });
     }
 
     await conn.beginTransaction();
@@ -3504,7 +3768,10 @@ router.post("/cases/:id/push-internal-sheet", isAdmin, async (req, res) => {
     }
 
     await conn.commit();
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "push-internal-sheet");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "push-internal-sheet",
+    );
     res.json({
       ok: true,
       message: pushed.created
@@ -3579,7 +3846,9 @@ router.post("/external-sheet/push-pending", isAdmin, async (req, res) => {
     let successCount = 0;
     const failed = [];
     for (const row of rows) {
-      const barcode = String(row.internal_barcode || row.external_barcode || "").trim();
+      const barcode = String(
+        row.internal_barcode || row.external_barcode || "",
+      ).trim();
       if (!barcode) {
         failed.push({ caseId: row.id, reason: "바코드 없음" });
         continue;
@@ -3605,7 +3874,11 @@ router.post("/external-sheet/push-pending", isAdmin, async (req, res) => {
           workPeriod: row.repair_eta || "",
           vendorName: row.vendor_name || "",
           productImage: item?.product_image || "",
-          progressFlag: String(row.case_state || "").toUpperCase() === REPAIR_CASE_STATES.ACCEPTED ? "TRUE" : "FALSE",
+          progressFlag:
+            String(row.case_state || "").toUpperCase() ===
+            REPAIR_CASE_STATES.ACCEPTED
+              ? "TRUE"
+              : "FALSE",
         });
         if (pushed?.error) {
           failed.push({ caseId: row.id, reason: pushed.error });
@@ -3618,7 +3891,10 @@ router.post("/external-sheet/push-pending", isAdmin, async (req, res) => {
           fallbackToFirst: true,
         });
         if (!sorted?.ok) {
-          failed.push({ caseId: row.id, reason: sorted.error || "시트 정렬 실패" });
+          failed.push({
+            caseId: row.id,
+            reason: sorted.error || "시트 정렬 실패",
+          });
           continue;
         }
         await conn.query(
@@ -3707,11 +3983,16 @@ async function executeBatchReconcile(conn, loginId, options = {}) {
     vendorInfoMap.set(name, {
       name,
       sheetId: String(vendorRow?.sheet_id || parsedSheet.sheetId || "").trim(),
-      sheetGid: String(vendorRow?.sheet_gid || parsedSheet.sheetGid || "").trim(),
+      sheetGid: String(
+        vendorRow?.sheet_gid || parsedSheet.sheetGid || "",
+      ).trim(),
     });
   }
   if (!vendorInfoMap.has(INTERNAL_VENDOR_NAME)) {
-    const internalVendor = await resolveRepairVendorSheetInfo(conn, INTERNAL_VENDOR_NAME);
+    const internalVendor = await resolveRepairVendorSheetInfo(
+      conn,
+      INTERNAL_VENDOR_NAME,
+    );
     vendorInfoMap.set(INTERNAL_VENDOR_NAME, {
       name: INTERNAL_VENDOR_NAME,
       sheetId: String(internalVendor?.sheetId || "").trim(),
@@ -3738,9 +4019,12 @@ async function executeBatchReconcile(conn, loginId, options = {}) {
     LEFT JOIN live_bids l
       ON i.source_bid_type = 'live'
      AND i.source_bid_id = l.id
+    LEFT JOIN instant_purchases ip
+      ON i.source_bid_type = 'instant'
+     AND i.source_bid_id = ip.id
     LEFT JOIN crawled_items ci
       ON CONVERT(ci.item_id USING utf8mb4) =
-         CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id) USING utf8mb4)
+         CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id, ip.item_id) USING utf8mb4)
     ORDER BY scheduled_at ASC, rc.id ASC
   `);
 
@@ -3751,12 +4035,23 @@ async function executeBatchReconcile(conn, loginId, options = {}) {
 
   for (const row of caseRows) {
     const caseId = Number(row.case_id || 0);
-    const decisionType = String(row.decision_type || "").trim().toUpperCase();
-    const caseState = String(row.case_state || "").trim().toUpperCase();
+    const decisionType = String(row.decision_type || "")
+      .trim()
+      .toUpperCase();
+    const caseState = String(row.case_state || "")
+      .trim()
+      .toUpperCase();
     if (!["INTERNAL", "EXTERNAL"].includes(decisionType)) continue;
-    if ([REPAIR_CASE_STATES.ARRIVED, REPAIR_CASE_STATES.REJECTED].includes(caseState)) continue;
+    if (
+      [REPAIR_CASE_STATES.ARRIVED, REPAIR_CASE_STATES.REJECTED].includes(
+        caseState,
+      )
+    )
+      continue;
 
-    const barcodeRaw = String(row.internal_barcode || row.external_barcode || "").trim();
+    const barcodeRaw = String(
+      row.internal_barcode || row.external_barcode || "",
+    ).trim();
     const barcode = normalizeBarcode(barcodeRaw);
     if (!barcode) {
       mismatches.push({
@@ -3767,7 +4062,9 @@ async function executeBatchReconcile(conn, loginId, options = {}) {
       continue;
     }
     const vendorName =
-      decisionType === "INTERNAL" ? INTERNAL_VENDOR_NAME : String(row.vendor_name || "").trim();
+      decisionType === "INTERNAL"
+        ? INTERNAL_VENDOR_NAME
+        : String(row.vendor_name || "").trim();
     if (hasVendorFilter && !targetVendorNames.has(vendorName)) continue;
     if (!vendorName) {
       mismatches.push({
@@ -3856,8 +4153,12 @@ async function executeBatchReconcile(conn, loginId, options = {}) {
     if (!vendorConfig?.sheetId) continue;
 
     if (!skipCleanup) {
-      const activeAllowed = [...(desiredActiveByVendor.get(vendorName) || new Set())];
-      const completedAllowed = [...(desiredCompletedByVendor.get(vendorName) || new Set())];
+      const activeAllowed = [
+        ...(desiredActiveByVendor.get(vendorName) || new Set()),
+      ];
+      const completedAllowed = [
+        ...(desiredCompletedByVendor.get(vendorName) || new Set()),
+      ];
 
       const cleanedActive = await cleanupVendorSheetRowsByAllowedBarcodes({
         sheetId: vendorConfig.sheetId,
@@ -3882,7 +4183,8 @@ async function executeBatchReconcile(conn, loginId, options = {}) {
         fallbackToFirst: false,
         allowedBarcodes: completedAllowed,
       });
-      if (cleanedCompleted.ok) removedCount += Number(cleanedCompleted.removed || 0);
+      if (cleanedCompleted.ok)
+        removedCount += Number(cleanedCompleted.removed || 0);
       else {
         mismatches.push({
           code: "sheet_cleanup_failed",
@@ -3963,7 +4265,10 @@ function startBatchReconcileJob({ loginId }) {
   setImmediate(async () => {
     const conn = await pool.getConnection();
     try {
-      const summary = await executeBatchReconcile(conn, batchReconcileJobState.requestedBy);
+      const summary = await executeBatchReconcile(
+        conn,
+        batchReconcileJobState.requestedBy,
+      );
       if (batchReconcileJobState.runId === runId) {
         batchReconcileJobState.summary = summary;
         batchReconcileJobState.error = null;
@@ -3972,7 +4277,8 @@ function startBatchReconcileJob({ loginId }) {
       console.error("repair batch reconcile job error:", error);
       if (batchReconcileJobState.runId === runId) {
         batchReconcileJobState.summary = null;
-        batchReconcileJobState.error = error?.message || "시트 일괄 업데이트 실패";
+        batchReconcileJobState.error =
+          error?.message || "시트 일괄 업데이트 실패";
       }
     } finally {
       conn.release();
@@ -3991,16 +4297,23 @@ router.post("/sheets/batch-reconcile", isAdmin, async (req, res) => {
   const forceSync =
     String(req.query?.sync || req.body?.sync || "")
       .trim()
-      .toLowerCase() === "true" || String(req.query?.sync || req.body?.sync || "").trim() === "1";
+      .toLowerCase() === "true" ||
+    String(req.query?.sync || req.body?.sync || "").trim() === "1";
 
   if (forceSync) {
     const conn = await pool.getConnection();
     try {
       const summary = await executeBatchReconcile(conn, loginId);
-      return res.json({ ok: true, message: summary.message, result: summary.result });
+      return res.json({
+        ok: true,
+        message: summary.message,
+        result: summary.result,
+      });
     } catch (error) {
       console.error("repair batch reconcile sync error:", error);
-      return res.status(500).json({ ok: false, message: "시트 일괄 업데이트 실패" });
+      return res
+        .status(500)
+        .json({ ok: false, message: "시트 일괄 업데이트 실패" });
     } finally {
       conn.release();
     }
@@ -4035,7 +4348,9 @@ router.post("/items/:itemId/no-repair-complete", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const itemId = Number(req.params?.itemId);
     if (!itemId) {
-      return res.status(400).json({ ok: false, message: "item id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "item id가 필요합니다." });
     }
 
     await conn.beginTransaction();
@@ -4060,7 +4375,9 @@ router.post("/items/:itemId/no-repair-complete", isAdmin, async (req, res) => {
     const item = itemRows[0];
     if (!item) {
       await conn.rollback();
-      return res.status(404).json({ ok: false, message: "물건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "물건을 찾을 수 없습니다." });
     }
     if (item.current_location_code !== "DOMESTIC_ARRIVAL_ZONE") {
       await conn.rollback();
@@ -4168,7 +4485,9 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const caseId = Number(req.params?.id);
     if (!caseId) {
-      return res.status(400).json({ ok: false, message: "case id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "case id가 필요합니다." });
     }
 
     await conn.beginTransaction();
@@ -4201,13 +4520,21 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
     const row = rows[0];
     if (!row) {
       await conn.rollback();
-      return res.status(404).json({ ok: false, message: "수선건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "수선건을 찾을 수 없습니다." });
     }
     if (row.decision_type !== "EXTERNAL") {
       await conn.rollback();
-      return res.status(400).json({ ok: false, message: "외부수선 건만 동기화할 수 있습니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "외부수선 건만 동기화할 수 있습니다." });
     }
-    if (String(row.case_state || "").trim().toUpperCase() === REPAIR_CASE_STATES.ARRIVED) {
+    if (
+      String(row.case_state || "")
+        .trim()
+        .toUpperCase() === REPAIR_CASE_STATES.ARRIVED
+    ) {
       await conn.rollback();
       return res.status(400).json({
         ok: false,
@@ -4215,10 +4542,17 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
       });
     }
 
-    const barcode = String(row.internal_barcode || row.external_barcode || "").trim();
+    const barcode = String(
+      row.internal_barcode || row.external_barcode || "",
+    ).trim();
     if (!barcode) {
       await conn.rollback();
-      return res.status(400).json({ ok: false, message: "내부바코드가 없어 동기화할 수 없습니다." });
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          message: "내부바코드가 없어 동기화할 수 없습니다.",
+        });
     }
 
     const parsedSheet = parseGoogleSheetLink(row.sheet_url);
@@ -4228,7 +4562,8 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
       await conn.rollback();
       return res.status(400).json({
         ok: false,
-        message: "업체 시트 링크가 등록되지 않았습니다. 업체 설정에서 시트 링크를 등록하세요.",
+        message:
+          "업체 시트 링크가 등록되지 않았습니다. 업체 설정에서 시트 링크를 등록하세요.",
       });
     }
 
@@ -4242,7 +4577,8 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
     if (quote?.error) {
       const quoteErrorText = String(quote.error || "");
       const shouldAutoCreateRow =
-        (quoteErrorText.includes("시트에서 바코드") && quoteErrorText.includes("행을 찾지 못했습니다")) ||
+        (quoteErrorText.includes("시트에서 바코드") &&
+          quoteErrorText.includes("행을 찾지 못했습니다")) ||
         quoteErrorText.includes("시트 데이터가 비어 있습니다.") ||
         quoteErrorText.includes("시트 헤더를 찾지 못했습니다");
       if (shouldAutoCreateRow) {
@@ -4259,7 +4595,8 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
           workPeriod: row.repair_eta || "",
           vendorName: row.vendor_name || "",
           productImage: item?.product_image || "",
-          progressFlag: row.case_state === REPAIR_CASE_STATES.ACCEPTED ? "TRUE" : "FALSE",
+          progressFlag:
+            row.case_state === REPAIR_CASE_STATES.ACCEPTED ? "TRUE" : "FALSE",
         });
         if (pushed?.error) {
           await conn.rollback();
@@ -4288,7 +4625,8 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
         );
         return res.json({
           ok: true,
-          message: "시트가 비어있거나 바코드 행이 없어 자동으로 생성했습니다. 업체가 견적 입력 후 다시 동기화하세요.",
+          message:
+            "시트가 비어있거나 바코드 행이 없어 자동으로 생성했습니다. 업체가 견적 입력 후 다시 동기화하세요.",
           result: {
             caseId,
             barcode,
@@ -4327,7 +4665,8 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
         );
         return res.json({
           ok: true,
-          message: "외주시트 행 동기화 완료. 현재 견적이 비어있어 금액 반영은 하지 않았습니다.",
+          message:
+            "외주시트 행 동기화 완료. 현재 견적이 비어있어 금액 반영은 하지 않았습니다.",
           result: {
             caseId,
             barcode,
@@ -4348,7 +4687,8 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
     const mergedRepairNote = [String(row.repair_note || "").trim(), ...addNotes]
       .filter(Boolean)
       .join(" / ");
-    const mergedRepairEta = String(quote.etaRaw || row.repair_eta || "").trim() || null;
+    const mergedRepairEta =
+      String(quote.etaRaw || row.repair_eta || "").trim() || null;
 
     const item = await fetchRepairItemWithMeta(conn, row.item_id);
     const proposalText = buildProposalText({
@@ -4380,7 +4720,14 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
           updated_at = NOW()
       WHERE id = ?
       `,
-      [quoteAmount, mergedRepairNote || null, mergedRepairEta, proposalText, loginId, caseId],
+      [
+        quoteAmount,
+        mergedRepairNote || null,
+        mergedRepairEta,
+        proposalText,
+        loginId,
+        caseId,
+      ],
     );
 
     await conn.commit();
@@ -4424,7 +4771,9 @@ router.post("/cases/:id/accept", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const caseId = Number(req.params?.id);
     if (!caseId) {
-      return res.status(400).json({ ok: false, message: "case id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "case id가 필요합니다." });
     }
 
     await conn.beginTransaction();
@@ -4463,7 +4812,9 @@ router.post("/cases/:id/accept", isAdmin, async (req, res) => {
     const row = rows[0];
     if (!row) {
       await conn.rollback();
-      return res.status(404).json({ ok: false, message: "수선건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "수선건을 찾을 수 없습니다." });
     }
     if (row.case_state !== REPAIR_CASE_STATES.PROPOSED) {
       await conn.rollback();
@@ -4495,13 +4846,20 @@ router.post("/cases/:id/accept", isAdmin, async (req, res) => {
       toZoneCode: zoneCode,
       actionType,
       staffName: loginId,
-      note: row.decision_type === "EXTERNAL" ? `외주업체: ${row.vendor_name || "-"}` : "내부수선 진행 시작",
+      note:
+        row.decision_type === "EXTERNAL"
+          ? `외주업체: ${row.vendor_name || "-"}`
+          : "내부수선 진행 시작",
     });
 
     await syncBidStatusByLocation(conn, row, zoneCode);
     await conn.commit();
     let decisionSheetWarning = null;
-    if (["INTERNAL", "EXTERNAL"].includes(String(row.decision_type || "").toUpperCase())) {
+    if (
+      ["INTERNAL", "EXTERNAL"].includes(
+        String(row.decision_type || "").toUpperCase(),
+      )
+    ) {
       try {
         const pushed = await pushRepairCaseToDecisionSheet({
           conn,
@@ -4516,7 +4874,10 @@ router.post("/cases/:id/accept", isAdmin, async (req, res) => {
         decisionSheetWarning = `업체시트 동기화 실패: ${error?.message || "알 수 없는 오류"}`;
       }
     }
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "accept-case");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "accept-case",
+    );
     const mergedSheetWarning = decisionSheetWarning || null;
 
     res.json({
@@ -4549,7 +4910,9 @@ router.post("/cases/:id/mark-sent", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const caseId = Number(req.params?.id);
     if (!caseId) {
-      return res.status(400).json({ ok: false, message: "case id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "case id가 필요합니다." });
     }
 
     const [rows] = await conn.query(
@@ -4563,12 +4926,19 @@ router.post("/cases/:id/mark-sent", isAdmin, async (req, res) => {
     );
     const row = rows[0];
     if (!row) {
-      return res.status(404).json({ ok: false, message: "수선건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "수선건을 찾을 수 없습니다." });
     }
-    if (![REPAIR_CASE_STATES.READY_TO_SEND, REPAIR_CASE_STATES.REJECTED].includes(row.case_state)) {
+    if (
+      ![REPAIR_CASE_STATES.READY_TO_SEND, REPAIR_CASE_STATES.REJECTED].includes(
+        row.case_state,
+      )
+    ) {
       return res.status(400).json({
         ok: false,
-        message: "견적완료/고객전송대기(또는 거절) 단계에서만 전송완료 처리할 수 있습니다.",
+        message:
+          "견적완료/고객전송대기(또는 거절) 단계에서만 전송완료 처리할 수 있습니다.",
       });
     }
 
@@ -4586,7 +4956,11 @@ router.post("/cases/:id/mark-sent", isAdmin, async (req, res) => {
       [REPAIR_CASE_STATES.PROPOSED, loginId, caseId],
     );
     let decisionSheetSync = null;
-    if (["INTERNAL", "EXTERNAL"].includes(String(row.decision_type || "").toUpperCase())) {
+    if (
+      ["INTERNAL", "EXTERNAL"].includes(
+        String(row.decision_type || "").toUpperCase(),
+      )
+    ) {
       decisionSheetSync = await pushRepairCaseToDecisionSheet({
         conn,
         caseId,
@@ -4594,7 +4968,10 @@ router.post("/cases/:id/mark-sent", isAdmin, async (req, res) => {
         expectedDecisionType: row.decision_type,
       });
     }
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "mark-sent");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "mark-sent",
+    );
 
     return res.json({
       ok: true,
@@ -4620,7 +4997,9 @@ router.post("/cases/:id/reject", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const caseId = Number(req.params?.id);
     if (!caseId) {
-      return res.status(400).json({ ok: false, message: "case id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "case id가 필요합니다." });
     }
     const loginId = String(req.session?.user?.login_id || "admin");
 
@@ -4642,7 +5021,9 @@ router.post("/cases/:id/reject", isAdmin, async (req, res) => {
     );
     const before = beforeRows[0] || null;
     if (!before) {
-      return res.status(404).json({ ok: false, message: "수선건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "수선건을 찾을 수 없습니다." });
     }
 
     const [result] = await conn.query(
@@ -4657,20 +5038,31 @@ router.post("/cases/:id/reject", isAdmin, async (req, res) => {
       [REPAIR_CASE_STATES.REJECTED, loginId, caseId],
     );
     if (!result.affectedRows) {
-      return res.status(404).json({ ok: false, message: "수선건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "수선건을 찾을 수 없습니다." });
     }
 
     let sheetCleanup = null;
-    if (["INTERNAL", "EXTERNAL"].includes(String(before.decision_type || "").toUpperCase())) {
+    if (
+      ["INTERNAL", "EXTERNAL"].includes(
+        String(before.decision_type || "").toUpperCase(),
+      )
+    ) {
       sheetCleanup = await removeRepairCaseFromVendorSheets({
         conn,
         decisionType: before.decision_type,
         vendorName: before.vendor_name,
-        barcode: String(before.internal_barcode || before.external_barcode || "").trim(),
+        barcode: String(
+          before.internal_barcode || before.external_barcode || "",
+        ).trim(),
       });
     }
 
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "reject-case");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "reject-case",
+    );
     res.json({
       ok: true,
       message: sheetCleanup?.ok
@@ -4696,7 +5088,9 @@ router.post("/cases/:id/repair-complete", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const caseId = Number(req.params?.id);
     if (!caseId) {
-      return res.status(400).json({ ok: false, message: "case id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "case id가 필요합니다." });
     }
 
     await conn.beginTransaction();
@@ -4726,7 +5120,9 @@ router.post("/cases/:id/repair-complete", isAdmin, async (req, res) => {
     const row = rows[0];
     if (!row) {
       await conn.rollback();
-      return res.status(404).json({ ok: false, message: "수선건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "수선건을 찾을 수 없습니다." });
     }
     if (row.case_state !== REPAIR_CASE_STATES.ACCEPTED) {
       await conn.rollback();
@@ -4761,7 +5157,11 @@ router.post("/cases/:id/repair-complete", isAdmin, async (req, res) => {
 
     await conn.commit();
     let decisionSheetSync = null;
-    if (["INTERNAL", "EXTERNAL"].includes(String(row.decision_type || "").toUpperCase())) {
+    if (
+      ["INTERNAL", "EXTERNAL"].includes(
+        String(row.decision_type || "").toUpperCase(),
+      )
+    ) {
       decisionSheetSync = await pushRepairCaseToDecisionSheet({
         conn,
         caseId,
@@ -4769,7 +5169,10 @@ router.post("/cases/:id/repair-complete", isAdmin, async (req, res) => {
         expectedDecisionType: row.decision_type,
       });
     }
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "repair-complete");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "repair-complete",
+    );
     res.json({
       ok: true,
       message: decisionSheetSync?.ok
@@ -4794,7 +5197,9 @@ router.post("/cases/:id/ship", isAdmin, async (req, res) => {
     await ensureRepairTables(conn);
     const caseId = Number(req.params?.id);
     if (!caseId) {
-      return res.status(400).json({ ok: false, message: "case id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "case id가 필요합니다." });
     }
 
     await conn.beginTransaction();
@@ -4823,7 +5228,9 @@ router.post("/cases/:id/ship", isAdmin, async (req, res) => {
     const row = rows[0];
     if (!row) {
       await conn.rollback();
-      return res.status(404).json({ ok: false, message: "수선건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "수선건을 찾을 수 없습니다." });
     }
     if (
       ![REPAIR_CASE_STATES.ACCEPTED, REPAIR_CASE_STATES.DONE].includes(
@@ -4871,7 +5278,9 @@ router.post("/cases/:id/ship", isAdmin, async (req, res) => {
         `,
         [caseId],
       );
-      const decisionType = String(decisionRows?.[0]?.decision_type || "").trim().toUpperCase();
+      const decisionType = String(decisionRows?.[0]?.decision_type || "")
+        .trim()
+        .toUpperCase();
       if (["INTERNAL", "EXTERNAL"].includes(decisionType)) {
         decisionSheetSync = await pushRepairCaseToDecisionSheet({
           conn,
@@ -4881,7 +5290,10 @@ router.post("/cases/:id/ship", isAdmin, async (req, res) => {
         });
       }
     }
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "ship-case");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "ship-case",
+    );
     res.json({
       ok: true,
       message: "출고완료 처리되었습니다.",
@@ -4905,10 +5317,14 @@ router.post("/items/:itemId/stage", isAdmin, async (req, res) => {
     const itemId = Number(req.params?.itemId);
     const targetStage = normalizeRepairStage(req.body?.stage);
     if (!itemId) {
-      return res.status(400).json({ ok: false, message: "item id가 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "item id가 필요합니다." });
     }
     if (!targetStage) {
-      return res.status(400).json({ ok: false, message: "유효한 단계값이 필요합니다." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "유효한 단계값이 필요합니다." });
     }
 
     const stageLabelMap = {
@@ -4942,7 +5358,9 @@ router.post("/items/:itemId/stage", isAdmin, async (req, res) => {
     const item = itemRows[0];
     if (!item) {
       await conn.rollback();
-      return res.status(404).json({ ok: false, message: "물건을 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "물건을 찾을 수 없습니다." });
     }
 
     const [caseRows] = await conn.query(
@@ -4966,7 +5384,9 @@ router.post("/items/:itemId/stage", isAdmin, async (req, res) => {
       .trim()
       .toUpperCase();
     const previousVendorName = String(existingCase?.vendor_name || "").trim();
-    const previousBarcode = String(item.internal_barcode || item.external_barcode || "").trim();
+    const previousBarcode = String(
+      item.internal_barcode || item.external_barcode || "",
+    ).trim();
 
     let targetCaseState = null;
     let targetDecisionType =
@@ -5021,7 +5441,9 @@ router.post("/items/:itemId/stage", isAdmin, async (req, res) => {
         break;
       default:
         await conn.rollback();
-        return res.status(400).json({ ok: false, message: "지원하지 않는 단계입니다." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "지원하지 않는 단계입니다." });
     }
 
     if (targetDecisionType === "EXTERNAL") {
@@ -5061,7 +5483,8 @@ router.post("/items/:itemId/stage", isAdmin, async (req, res) => {
               productTitle: itemMeta?.product_title,
               barcode: itemMeta?.internal_barcode || itemMeta?.external_barcode,
               repairNote:
-                String(existingCase?.repair_note || "").trim() || "수선 내용 미입력",
+                String(existingCase?.repair_note || "").trim() ||
+                "수선 내용 미입력",
               repairAmount: toAmount(existingCase?.repair_amount),
               repairEta: String(existingCase?.repair_eta || "").trim(),
               vendorName: targetVendorName,
@@ -5180,7 +5603,9 @@ router.post("/items/:itemId/stage", isAdmin, async (req, res) => {
       }
     }
 
-    const normalizedCurrentZone = normalizeLocationCode(item.current_location_code);
+    const normalizedCurrentZone = normalizeLocationCode(
+      item.current_location_code,
+    );
     if (
       normalizedCurrentZone !== targetZoneCode ||
       String(item.current_status || "") !== statusByZone(targetZoneCode)
@@ -5241,7 +5666,10 @@ router.post("/items/:itemId/stage", isAdmin, async (req, res) => {
         };
       }
     }
-    const overviewSync = await syncRepairDailyOverviewSheetSafe(conn, "stage-change");
+    const overviewSync = await syncRepairDailyOverviewSheetSafe(
+      conn,
+      "stage-change",
+    );
 
     return res.json({
       ok: true,

@@ -287,6 +287,7 @@
           <a href="/admin">대시보드</a>
           <a href="/admin/live-bids">현장 경매 관리</a>
           <a href="/admin/direct-bids">직접 경매 관리</a>
+          <a href="/admin/instant-purchases">바로 구매 관리</a>
           <a href="/admin/all-bids">통합 경매 관리</a>
           <a href="/admin/bid-results">입찰 결과 & 정산</a>
           <a href="/admin/transactions">거래 내역 관리</a>
@@ -318,13 +319,17 @@
               <input id="searchAucNum" placeholder="경매번호(예: 1,2,4)" />
             </div>
             <div class="form-row">
-              <button id="btnSearchCompleted" class="primary">낙찰완료 조회</button>
+              <button id="btnSearchCompleted" class="primary">
+                낙찰완료 조회
+              </button>
               <button id="btnGenerateLabels" class="primary">
                 선택 바코드 생성 + 라벨 출력
               </button>
             </div>
             <div class="hint">
-              국내에 도착한 박스를 보고 1) 경매 진행 날짜 확인 2) 날짜/경매번호 선택 3) 낙찰완료 조회 후 전체 선택 출력하면 국내도착존으로 자동 반영됩니다.
+              국내에 도착한 박스를 보고 1) 경매 진행 날짜 확인 2) 날짜/경매번호
+              선택 3) 낙찰완료 조회 후 전체 선택 출력하면 국내도착존으로 자동
+              반영됩니다.
             </div>
             <div class="auction-wrap" style="margin-top: 10px">
               <table class="items-table">
@@ -350,28 +355,39 @@
             <h3>2단계. 스캔 처리</h3>
             <div class="scan-mode-row">
               <select id="scanMode">
-                <option value="two_step">바코드 리더기 모드(존코드 → 물건바코드)</option>
+                <option value="two_step">
+                  바코드 리더기 모드(존코드 → 물건바코드)
+                </option>
                 <option value="manual">수동모드(존 선택 + 물건바코드)</option>
               </select>
-              <button id="btnPrintZoneBarcodes" type="button" class="primary">존 바코드 출력</button>
+              <button id="btnPrintZoneBarcodes" type="button" class="primary">
+                존 바코드 출력
+              </button>
               <button id="btnClearStation" type="button">현재 존 초기화</button>
             </div>
             <div id="stationStatus" class="status-box">
-              현재 존: <strong>미설정</strong> (직원모드에서는 먼저 존 코드를 스캔하세요)
+              현재 존: <strong>미설정</strong> (직원모드에서는 먼저 존 코드를
+              스캔하세요)
             </div>
             <div class="hint" style="margin-top: 6px">
-              입력창 클릭 후 영문(ABC) 상태에서 1) 존 바코드 스캔 2) 물건 바코드 연속 스캔
+              입력창 클릭 후 영문(ABC) 상태에서 1) 존 바코드 스캔 2) 물건 바코드
+              연속 스캔
             </div>
             <hr />
             <div class="form-row single">
-              <input id="scanBarcode" placeholder="바코드 입력 후 엔터 또는 버튼 클릭" />
+              <input
+                id="scanBarcode"
+                placeholder="바코드 입력 후 엔터 또는 버튼 클릭" />
             </div>
             <div class="form-row">
               <select id="toLocationCode"></select>
               <input id="staffName" placeholder="담당자명" />
             </div>
             <div class="form-row single">
-              <textarea id="scanNote" rows="2" placeholder="메모(선택)"></textarea>
+              <textarea
+                id="scanNote"
+                rows="2"
+                placeholder="메모(선택)"></textarea>
             </div>
             <div class="form-row single">
               <button id="btnScan" class="primary">스캔 기록</button>
@@ -383,7 +399,9 @@
         <div class="card" style="margin-top: 16px">
           <h3>3단계. 존별 현황</h3>
           <div class="board-filter-row">
-            <div id="boardFilterHint" class="hint">숫자를 클릭하면 해당 존 물건만 아래 목록에 표시됩니다.</div>
+            <div id="boardFilterHint" class="hint">
+              숫자를 클릭하면 해당 존 물건만 아래 목록에 표시됩니다.
+            </div>
             <button id="btnClearBoardFilter" type="button">존 필터 해제</button>
           </div>
           <div id="boardGrid" class="board-grid"></div>

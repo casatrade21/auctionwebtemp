@@ -57,6 +57,7 @@ window.BidManager = (function () {
   const _state = {
     liveBidData: [],
     directBidData: [],
+    instantPurchaseData: [],
     isAuthenticated: false,
     currentData: [],
     submittingBids: new Set(), // 현재 제출 중인 입찰 추적 (중복 방지)
@@ -906,7 +907,17 @@ window.BidManager = (function () {
   function getBidInfoForCard(bidInfo, item) {
     if (!bidInfo) return "";
 
-    if (item.bid_type === "direct") {
+    if (item.bid_type === "instant") {
+      const price = bidInfo.purchase_price || bidInfo.winning_price || 0;
+      if (!price) return "";
+      return `<div class="my-bid-price">
+        <span class="price-label">구매 금액</span>
+        <span class="price-value">${cleanNumberFormat(price)}￥</span>
+        <span class="price-detail">관부가세 포함 ${cleanNumberFormat(
+          calculateTotalPrice(price, item.auc_num, item.category),
+        )}원</span>
+      </div>`;
+    } else if (item.bid_type === "direct") {
       return getDirectBidInfoHTML(bidInfo, item);
     } else {
       return getLiveBidInfoHTML(bidInfo, item);
@@ -1051,9 +1062,10 @@ window.BidManager = (function () {
   /**
    * 입찰 데이터 업데이트
    */
-  function updateBidData(liveBids, directBids) {
+  function updateBidData(liveBids, directBids, instantPurchases) {
     _state.liveBidData = liveBids || [];
     _state.directBidData = directBids || [];
+    _state.instantPurchaseData = instantPurchases || [];
   }
 
   /**
@@ -1075,6 +1087,7 @@ window.BidManager = (function () {
     // 상태 조회
     getLiveBidData: () => _state.liveBidData,
     getDirectBidData: () => _state.directBidData,
+    getInstantPurchaseData: () => _state.instantPurchaseData,
 
     // 초기화
     initialize,

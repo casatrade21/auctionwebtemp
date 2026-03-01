@@ -5,6 +5,7 @@ const TRACKED_PREFIXES = [
   "/api/admin",
   "/api/live-bids",
   "/api/direct-bids",
+  "/api/instant-purchases",
   "/api/wms",
   "/api/repair-management",
   "/api/deposits",
@@ -18,6 +19,7 @@ const MENU_RULES = [
   { prefix: "/api/repair-management", menu: "수선관리" },
   { prefix: "/api/live-bids", menu: "현장경매" },
   { prefix: "/api/direct-bids", menu: "직접경매" },
+  { prefix: "/api/instant-purchases", menu: "바로구매" },
   { prefix: "/api/bid-results", menu: "입찰결과/정산" },
   { prefix: "/api/admin", menu: "관리자설정" },
   { prefix: "/api/deposits", menu: "입금/정산" },
@@ -66,72 +68,142 @@ function buildHumanAction(req) {
 
   if (path === "/api/wms/scan") {
     title = "WMS 스캔 처리";
-    if (body.barcode) summaryParts.push(`바코드: ${compactValue(body.barcode)}`);
+    if (body.barcode)
+      summaryParts.push(`바코드: ${compactValue(body.barcode)}`);
     if (body.toLocationCode || body.locationCode) {
       summaryParts.push(
         `이동존: ${compactValue(humanWmsZone(body.toLocationCode || body.locationCode))}`,
       );
     }
-    if (body.actionType) summaryParts.push(`처리유형: ${compactValue(body.actionType)}`);
+    if (body.actionType)
+      summaryParts.push(`처리유형: ${compactValue(body.actionType)}`);
   } else if (path === "/api/wms/items") {
     title = "WMS 물건 등록";
-    if (body.externalBarcode) summaryParts.push(`외부바코드: ${compactValue(body.externalBarcode)}`);
-    if (body.internalBarcode) summaryParts.push(`내부바코드: ${compactValue(body.internalBarcode)}`);
+    if (body.externalBarcode)
+      summaryParts.push(`외부바코드: ${compactValue(body.externalBarcode)}`);
+    if (body.internalBarcode)
+      summaryParts.push(`내부바코드: ${compactValue(body.internalBarcode)}`);
   } else if (path === "/api/wms/auction-labels") {
     title = "내부바코드 생성/출력";
-    if (Array.isArray(body.items)) summaryParts.push(`선택건수: ${body.items.length}건`);
-    if (body.scheduledDate) summaryParts.push(`날짜: ${compactValue(body.scheduledDate)}`);
+    if (Array.isArray(body.items))
+      summaryParts.push(`선택건수: ${body.items.length}건`);
+    if (body.scheduledDate)
+      summaryParts.push(`날짜: ${compactValue(body.scheduledDate)}`);
     if (body.aucNum) summaryParts.push(`경매장: ${compactValue(body.aucNum)}`);
   } else if (path === "/api/repair-management/cases") {
     title = "수선 제안 등록";
-    if (body.internalBarcode) summaryParts.push(`내부바코드: ${compactValue(body.internalBarcode)}`);
-    if (body.repairType) summaryParts.push(`수선구분: ${compactValue(body.repairType)}`);
-    if (body.vendorName) summaryParts.push(`외주업체: ${compactValue(body.vendorName)}`);
+    if (body.internalBarcode)
+      summaryParts.push(`내부바코드: ${compactValue(body.internalBarcode)}`);
+    if (body.repairType)
+      summaryParts.push(`수선구분: ${compactValue(body.repairType)}`);
+    if (body.vendorName)
+      summaryParts.push(`외주업체: ${compactValue(body.vendorName)}`);
     if (body.amount) summaryParts.push(`금액: ${compactValue(body.amount)}원`);
   } else if (path === "/api/repair-management/vendors") {
     title = "외주업체 추가";
-    if (body.vendorName) summaryParts.push(`업체명: ${compactValue(body.vendorName)}`);
-  } else if (/^\/api\/admin\/admin-accounts$/.test(path) && req.method === "POST") {
+    if (body.vendorName)
+      summaryParts.push(`업체명: ${compactValue(body.vendorName)}`);
+  } else if (
+    /^\/api\/admin\/admin-accounts$/.test(path) &&
+    req.method === "POST"
+  ) {
     title = "관리자 계정 생성";
-    if (body.loginId) summaryParts.push(`아이디: ${compactValue(body.loginId)}`);
+    if (body.loginId)
+      summaryParts.push(`아이디: ${compactValue(body.loginId)}`);
     if (body.name) summaryParts.push(`담당자: ${compactValue(body.name)}`);
-  } else if (/^\/api\/admin\/admin-accounts\/\d+\/permissions$/.test(path) && req.method === "PUT") {
+  } else if (
+    /^\/api\/admin\/admin-accounts\/\d+\/permissions$/.test(path) &&
+    req.method === "PUT"
+  ) {
     title = "관리자 권한 변경";
     if (Array.isArray(body.allowedMenus)) {
       summaryParts.push(`권한: ${body.allowedMenus.join(", ")}`);
     }
-  } else if (/^\/api\/admin\/admin-accounts\/\d+\/password$/.test(path) && req.method === "PUT") {
+  } else if (
+    /^\/api\/admin\/admin-accounts\/\d+\/password$/.test(path) &&
+    req.method === "PUT"
+  ) {
     title = "관리자 비밀번호 변경";
-  } else if (/^\/api\/admin\/admin-accounts\/\d+$/.test(path) && req.method === "DELETE") {
+  } else if (
+    /^\/api\/admin\/admin-accounts\/\d+$/.test(path) &&
+    req.method === "DELETE"
+  ) {
     title = "관리자 계정 삭제";
-  } else if (/^\/api\/live-bids\/complete$/.test(path) && req.method === "PUT") {
+  } else if (
+    /^\/api\/live-bids\/complete$/.test(path) &&
+    req.method === "PUT"
+  ) {
     title = "현장경매 낙찰완료 처리";
-    if (Array.isArray(body.bidIds)) summaryParts.push(`처리건수: ${body.bidIds.length}건`);
-  } else if (/^\/api\/direct-bids\/complete$/.test(path) && req.method === "PUT") {
+    if (Array.isArray(body.bidIds))
+      summaryParts.push(`처리건수: ${body.bidIds.length}건`);
+  } else if (
+    /^\/api\/direct-bids\/complete$/.test(path) &&
+    req.method === "PUT"
+  ) {
     title = "직접경매 낙찰완료 처리";
-    if (Array.isArray(body.bidIds)) summaryParts.push(`처리건수: ${body.bidIds.length}건`);
+    if (Array.isArray(body.bidIds))
+      summaryParts.push(`처리건수: ${body.bidIds.length}건`);
   } else if (/^\/api\/live-bids\/cancel$/.test(path) && req.method === "PUT") {
     title = "현장경매 낙찰실패 처리";
-    if (Array.isArray(body.bidIds)) summaryParts.push(`처리건수: ${body.bidIds.length}건`);
-  } else if (/^\/api\/direct-bids\/cancel$/.test(path) && req.method === "PUT") {
+    if (Array.isArray(body.bidIds))
+      summaryParts.push(`처리건수: ${body.bidIds.length}건`);
+  } else if (
+    /^\/api\/direct-bids\/cancel$/.test(path) &&
+    req.method === "PUT"
+  ) {
     title = "직접경매 낙찰실패 처리";
-    if (Array.isArray(body.bidIds)) summaryParts.push(`처리건수: ${body.bidIds.length}건`);
-  } else if (/^\/api\/live-bids\/\d+$/.test(path) && ["PUT", "PATCH"].includes(req.method)) {
+    if (Array.isArray(body.bidIds))
+      summaryParts.push(`처리건수: ${body.bidIds.length}건`);
+  } else if (
+    /^\/api\/instant-purchases\/cancel$/.test(path) &&
+    req.method === "PUT"
+  ) {
+    title = "바로구매 취소 처리";
+    if (Array.isArray(body.purchaseIds))
+      summaryParts.push(`처리건수: ${body.purchaseIds.length}건`);
+  } else if (
+    /^\/api\/instant-purchases\/shipping-status$/.test(path) &&
+    req.method === "PUT"
+  ) {
+    title = "바로구매 배송상태 변경";
+    if (body.shippingStatus)
+      summaryParts.push(`상태: ${compactValue(body.shippingStatus)}`);
+  } else if (/^\/api\/instant-purchases$/.test(path) && req.method === "POST") {
+    title = "바로구매 주문";
+    if (body.itemId) summaryParts.push(`상품: ${compactValue(body.itemId)}`);
+  } else if (
+    /^\/api\/live-bids\/\d+$/.test(path) &&
+    ["PUT", "PATCH"].includes(req.method)
+  ) {
     const bidId = path.split("/").pop();
     title = "현장경매 항목 수정";
     summaryParts.push(`bidId: ${bidId}`);
-    const changedKeys = Object.keys(body || {}).filter((k) => !["id", "token"].includes(k));
-    if (changedKeys.length) summaryParts.push(`수정필드: ${changedKeys.slice(0, 8).join(", ")}`);
-  } else if (/^\/api\/direct-bids\/\d+$/.test(path) && ["PUT", "PATCH"].includes(req.method)) {
+    const changedKeys = Object.keys(body || {}).filter(
+      (k) => !["id", "token"].includes(k),
+    );
+    if (changedKeys.length)
+      summaryParts.push(`수정필드: ${changedKeys.slice(0, 8).join(", ")}`);
+  } else if (
+    /^\/api\/direct-bids\/\d+$/.test(path) &&
+    ["PUT", "PATCH"].includes(req.method)
+  ) {
     const bidId = path.split("/").pop();
     title = "직접경매 항목 수정";
     summaryParts.push(`bidId: ${bidId}`);
-    const changedKeys = Object.keys(body || {}).filter((k) => !["id", "token"].includes(k));
-    if (changedKeys.length) summaryParts.push(`수정필드: ${changedKeys.slice(0, 8).join(", ")}`);
-  } else if (/^\/api\/bid-results\/admin\/settlements\/\d+$/.test(path) && req.method === "PUT") {
+    const changedKeys = Object.keys(body || {}).filter(
+      (k) => !["id", "token"].includes(k),
+    );
+    if (changedKeys.length)
+      summaryParts.push(`수정필드: ${changedKeys.slice(0, 8).join(", ")}`);
+  } else if (
+    /^\/api\/bid-results\/admin\/settlements\/\d+$/.test(path) &&
+    req.method === "PUT"
+  ) {
     title = "정산 수동 처리";
-    if (body.paymentAmount) summaryParts.push(`입금액: ${compactValue(body.paymentAmount)}원`);
-    if (body.depositorName) summaryParts.push(`입금자: ${compactValue(body.depositorName)}`);
+    if (body.paymentAmount)
+      summaryParts.push(`입금액: ${compactValue(body.paymentAmount)}원`);
+    if (body.depositorName)
+      summaryParts.push(`입금자: ${compactValue(body.depositorName)}`);
   } else {
     if (req.method === "POST") title = "등록";
     else if (req.method === "PUT" || req.method === "PATCH") title = "수정";
@@ -149,7 +221,8 @@ function buildHumanAction(req) {
 async function ensureAdminActivityTable() {
   if (!ensureTablePromise) {
     ensureTablePromise = pool
-      .query(`
+      .query(
+        `
         CREATE TABLE IF NOT EXISTS admin_activity_logs (
           id BIGINT AUTO_INCREMENT PRIMARY KEY,
           actor_user_id BIGINT NULL,
@@ -173,21 +246,34 @@ async function ensureAdminActivityTable() {
           KEY idx_admin_activity_actor (actor_login_id),
           KEY idx_admin_activity_path (action_path)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `)
+      `,
+      )
       .then(async () => {
-        const [menuCol] = await pool.query("SHOW COLUMNS FROM admin_activity_logs LIKE 'action_menu'");
+        const [menuCol] = await pool.query(
+          "SHOW COLUMNS FROM admin_activity_logs LIKE 'action_menu'",
+        );
         if (!menuCol.length) {
-          await pool.query("ALTER TABLE admin_activity_logs ADD COLUMN action_menu VARCHAR(120) NULL AFTER action_path");
+          await pool.query(
+            "ALTER TABLE admin_activity_logs ADD COLUMN action_menu VARCHAR(120) NULL AFTER action_path",
+          );
         }
 
-        const [titleCol] = await pool.query("SHOW COLUMNS FROM admin_activity_logs LIKE 'action_title'");
+        const [titleCol] = await pool.query(
+          "SHOW COLUMNS FROM admin_activity_logs LIKE 'action_title'",
+        );
         if (!titleCol.length) {
-          await pool.query("ALTER TABLE admin_activity_logs ADD COLUMN action_title VARCHAR(255) NULL AFTER action_menu");
+          await pool.query(
+            "ALTER TABLE admin_activity_logs ADD COLUMN action_title VARCHAR(255) NULL AFTER action_menu",
+          );
         }
 
-        const [summaryCol] = await pool.query("SHOW COLUMNS FROM admin_activity_logs LIKE 'action_summary'");
+        const [summaryCol] = await pool.query(
+          "SHOW COLUMNS FROM admin_activity_logs LIKE 'action_summary'",
+        );
         if (!summaryCol.length) {
-          await pool.query("ALTER TABLE admin_activity_logs ADD COLUMN action_summary TEXT NULL AFTER action_title");
+          await pool.query(
+            "ALTER TABLE admin_activity_logs ADD COLUMN action_summary TEXT NULL AFTER action_title",
+          );
         }
       })
       .catch((error) => {
@@ -205,14 +291,18 @@ function isTrackedRequest(req) {
 
 function guessTarget(req) {
   const path = String(req.path || "");
-  const matchPathId = path.match(/^\/api\/(?:live-bids|direct-bids|wms|repair-management)\/(\d+)(?:\/|$)/);
+  const matchPathId = path.match(
+    /^\/api\/(?:live-bids|direct-bids|instant-purchases|wms|repair-management)\/(\d+)(?:\/|$)/,
+  );
   if (matchPathId?.[1]) return { type: "id", id: matchPathId[1] };
   if (req.params?.id) return { type: "id", id: String(req.params.id) };
   if (req.body?.id) return { type: "id", id: String(req.body.id) };
   if (req.body?.item_id) return { type: "item", id: String(req.body.item_id) };
   if (req.body?.bid_id) return { type: "bid", id: String(req.body.bid_id) };
-  if (req.body?.barcode) return { type: "barcode", id: String(req.body.barcode) };
-  if (req.body?.internalBarcode) return { type: "barcode", id: String(req.body.internalBarcode) };
+  if (req.body?.barcode)
+    return { type: "barcode", id: String(req.body.barcode) };
+  if (req.body?.internalBarcode)
+    return { type: "barcode", id: String(req.body.internalBarcode) };
   if (Array.isArray(req.body?.bidIds) && req.body.bidIds.length > 0) {
     return { type: "bidIds", id: req.body.bidIds.slice(0, 10).join(",") };
   }
@@ -255,6 +345,7 @@ async function enrichSummaryByRoute(req, human, target) {
     const path = String(req.path || "");
     const directMatch = path.match(/^\/api\/direct-bids\/(\d+)$/);
     const liveMatch = path.match(/^\/api\/live-bids\/(\d+)$/);
+    const instantMatch = path.match(/^\/api\/instant-purchases\/(\d+)$/);
 
     if (directMatch && ["PUT", "PATCH"].includes(req.method)) {
       const bidId = Number(directMatch[1]);
@@ -264,7 +355,10 @@ async function enrichSummaryByRoute(req, human, target) {
       );
       const row = rows?.[0];
       if (row) {
-        const extra = [`item_id: ${row.item_id || "-"}`, `상태: ${row.status || "-"}`].join(" | ");
+        const extra = [
+          `item_id: ${row.item_id || "-"}`,
+          `상태: ${row.status || "-"}`,
+        ].join(" | ");
         return {
           human: {
             ...human,
@@ -286,7 +380,10 @@ async function enrichSummaryByRoute(req, human, target) {
       );
       const row = rows?.[0];
       if (row) {
-        const extra = [`item_id: ${row.item_id || "-"}`, `상태: ${row.status || "-"}`].join(" | ");
+        const extra = [
+          `item_id: ${row.item_id || "-"}`,
+          `상태: ${row.status || "-"}`,
+        ].join(" | ");
         return {
           human: {
             ...human,
@@ -294,6 +391,31 @@ async function enrichSummaryByRoute(req, human, target) {
           },
           target: {
             type: target.type || "bid",
+            id: target.id || String(row.id),
+          },
+        };
+      }
+    }
+
+    if (instantMatch && ["PUT", "PATCH"].includes(req.method)) {
+      const purchaseId = Number(instantMatch[1]);
+      const [rows] = await pool.query(
+        `SELECT id, item_id, status FROM instant_purchases WHERE id = ? LIMIT 1`,
+        [purchaseId],
+      );
+      const row = rows?.[0];
+      if (row) {
+        const extra = [
+          `item_id: ${row.item_id || "-"}`,
+          `상태: ${row.status || "-"}`,
+        ].join(" | ");
+        return {
+          human: {
+            ...human,
+            summary: [human.summary, extra].filter(Boolean).join(" | "),
+          },
+          target: {
+            type: target.type || "purchase",
             id: target.id || String(row.id),
           },
         };

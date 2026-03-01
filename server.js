@@ -11,7 +11,11 @@ const { pool, sessionPool } = require("./utils/DB");
 const fs = require("fs");
 const { isAuthenticated } = require("./utils/middleware");
 const { isAdminUser } = require("./utils/adminAuth");
-const { canAccessAdminMenu, isSuperAdminUser, parseAllowedMenus } = require("./utils/adminAccess");
+const {
+  canAccessAdminMenu,
+  isSuperAdminUser,
+  parseAllowedMenus,
+} = require("./utils/adminAccess");
 const { adminActivityLogger } = require("./utils/adminActivityLogger");
 const { startExpiredSchedulers } = require("./utils/dataUtils");
 const esManager = require("./utils/elasticsearch");
@@ -30,6 +34,7 @@ const valuesRoutes = require("./routes/values");
 const detailRoutes = require("./routes/detail");
 const liveBidsRoutes = require("./routes/live-bids");
 const directBidsRoutes = require("./routes/direct-bids");
+const instantPurchasesRoutes = require("./routes/instant-purchases");
 const userRoutes = require("./routes/users");
 const dashboardRoutes = require("./routes/dashboard");
 const bidResultsRouter = require("./routes/bid-results");
@@ -149,6 +154,7 @@ app.use("/api/values", valuesRoutes);
 app.use("/api/detail", detailRoutes);
 app.use("/api/live-bids", liveBidsRoutes);
 app.use("/api/direct-bids", directBidsRoutes);
+app.use("/api/instant-purchases", instantPurchasesRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.get("/api/metrics", metricsModule.getMetrics);
@@ -174,7 +180,10 @@ app.use(
   express.static(publicPath, {
     setHeaders: (res) => {
       if (process.env.NODE_ENV !== "production") {
-        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+        res.setHeader(
+          "Cache-Control",
+          "no-store, no-cache, must-revalidate, private",
+        );
         res.setHeader("Pragma", "no-cache");
         res.setHeader("Expires", "0");
       }
@@ -297,6 +306,7 @@ const ADMIN_MENU_PATH_BY_KEY = {
   dashboard: "/admin",
   "live-bids": "/admin/live-bids",
   "direct-bids": "/admin/direct-bids",
+  "instant-purchases": "/admin/instant-purchases",
   "all-bids": "/admin/all-bids",
   "bid-results": "/admin/bid-results",
   transactions: "/admin/transactions",
@@ -337,17 +347,36 @@ function sendAdminPage(pageFile, menuKey) {
 app.get("/admin", sendAdminPage("index.html", "dashboard"));
 app.get("/admin/live-bids", sendAdminPage("live-bids.html", "live-bids"));
 app.get("/admin/direct-bids", sendAdminPage("direct-bids.html", "direct-bids"));
+app.get(
+  "/admin/instant-purchases",
+  sendAdminPage("instant-purchases.html", "instant-purchases"),
+);
 app.get("/admin/all-bids", sendAdminPage("all-bids.html", "all-bids"));
 app.get("/admin/bid-results", sendAdminPage("bid-results.html", "bid-results"));
-app.get("/admin/transactions", sendAdminPage("transactions.html", "transactions"));
+app.get(
+  "/admin/transactions",
+  sendAdminPage("transactions.html", "transactions"),
+);
 app.get("/admin/invoices", sendAdminPage("invoices.html", "invoices"));
-app.get("/admin/recommend-filters", sendAdminPage("recommend-filters.html", "recommend-filters"));
+app.get(
+  "/admin/recommend-filters",
+  sendAdminPage("recommend-filters.html", "recommend-filters"),
+);
 app.get("/admin/settings", sendAdminPage("settings.html", "settings"));
 app.get("/admin/users", sendAdminPage("users.html", "users"));
 app.get("/admin/wms", sendAdminPage("wms.html", "wms"));
-app.get("/admin/repair-management", sendAdminPage("repair-management.html", "repair-management"));
-app.get("/admin/activity-logs", sendAdminPage("activity-logs.html", "activity-logs"));
-app.get("/admin/admin-permissions", sendAdminPage("admin-permissions.html", "__superadmin__"));
+app.get(
+  "/admin/repair-management",
+  sendAdminPage("repair-management.html", "repair-management"),
+);
+app.get(
+  "/admin/activity-logs",
+  sendAdminPage("activity-logs.html", "activity-logs"),
+);
+app.get(
+  "/admin/admin-permissions",
+  sendAdminPage("admin-permissions.html", "__superadmin__"),
+);
 
 // 감정 시스템 페이지
 app.get("/appr", (req, res) => {

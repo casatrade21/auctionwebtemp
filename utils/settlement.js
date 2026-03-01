@@ -83,7 +83,17 @@ async function createOrUpdateSettlement(userId, date) {
       [userId, date],
     );
 
-    const items = [...liveBids, ...directBids];
+    const [instantPurchases] = await connection.query(
+      `SELECT p.purchase_price as winning_price, p.appr_id, p.repair_requested_at, p.repair_fee, i.auc_num, i.category
+       FROM instant_purchases p
+       LEFT JOIN crawled_items i ON p.item_id = i.item_id
+       WHERE p.user_id = ? 
+         AND DATE(i.scheduled_date) = ?
+         AND p.status = 'completed'`,
+      [userId, date],
+    );
+
+    const items = [...liveBids, ...directBids, ...instantPurchases];
 
     if (items.length === 0) {
       // 낙찰 성공 없으면 정산 삭제
@@ -306,8 +316,13 @@ async function adjustDepositBalance(connection, userId, settlementDate) {
        SELECT l.id, 'live_bid' as bid_type
        FROM live_bids l 
        JOIN crawled_items i ON l.item_id = i.item_id 
-       WHERE l.user_id = ? AND DATE(i.scheduled_date) = ? AND l.status = 'completed'`,
-      [userId, settlementDate, userId, settlementDate],
+       WHERE l.user_id = ? AND DATE(i.scheduled_date) = ? AND l.status = 'completed'
+       UNION
+       SELECT p.id, 'instant_purchase' as bid_type
+       FROM instant_purchases p 
+       JOIN crawled_items i ON p.item_id = i.item_id 
+       WHERE p.user_id = ? AND DATE(i.scheduled_date) = ? AND p.status = 'completed'`,
+      [userId, settlementDate, userId, settlementDate, userId, settlementDate],
     );
 
     // 3. 각 입찰의 차감액 합계

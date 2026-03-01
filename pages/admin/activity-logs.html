@@ -20,6 +20,7 @@
           <a href="/admin">대시보드</a>
           <a href="/admin/live-bids">현장 경매 관리</a>
           <a href="/admin/direct-bids">직접 경매 관리</a>
+          <a href="/admin/instant-purchases">바로 구매 관리</a>
           <a href="/admin/all-bids">통합 경매 관리</a>
           <a href="/admin/bid-results">입찰 결과 & 정산</a>
           <a href="/admin/transactions">거래 내역 관리</a>
@@ -64,7 +65,10 @@
             </div>
             <div class="filter-group logs-path-group">
               <label for="actionInput">작업/변경내용</label>
-              <input id="actionInput" type="text" placeholder="예: 관리자 계정 생성, 권한 변경, 수선 제안 등록" />
+              <input
+                id="actionInput"
+                type="text"
+                placeholder="예: 관리자 계정 생성, 권한 변경, 수선 제안 등록" />
             </div>
             <div class="filter-group">
               <label for="dateFromInput">시작일</label>
@@ -82,7 +86,9 @@
         </div>
 
         <div class="card">
-          <div class="logs-summary" id="summaryText">데이터를 불러오는 중입니다...</div>
+          <div class="logs-summary" id="summaryText">
+            데이터를 불러오는 중입니다...
+          </div>
           <table class="data-table" id="logsTable">
             <thead>
               <tr>
@@ -97,7 +103,9 @@
             </thead>
             <tbody id="logsTableBody">
               <tr>
-                <td colspan="8" class="text-center">데이터를 불러오는 중입니다...</td>
+                <td colspan="8" class="text-center">
+                  데이터를 불러오는 중입니다...
+                </td>
               </tr>
             </tbody>
           </table>

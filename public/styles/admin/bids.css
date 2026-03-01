@@ -30,7 +30,9 @@
   border-radius: var(--radius-md);
   font-size: 15px;
   background: var(--admin-bg-subtle);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .search-box input[type="text"]:focus {
@@ -216,8 +218,12 @@
   color: var(--admin-text-secondary);
 }
 
-.filter-options-row .filter-group:has(select) { min-width: 90px; }
-.filter-options-row .filter-group:has(input[type="date"]) { min-width: 130px; }
+.filter-options-row .filter-group:has(select) {
+  min-width: 90px;
+}
+.filter-options-row .filter-group:has(input[type="date"]) {
+  min-width: 130px;
+}
 
 .filter-options-row .filter-actions {
   margin-left: auto;
@@ -732,7 +738,7 @@ input:checked + .toggle-slider::before {
 
 .result-type-segmented .result-tab.active {
   background: var(--accent-primary);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .result-type-segmented .result-tab span {
@@ -773,7 +779,7 @@ input:checked + .toggle-slider::before {
 /* 타입 배지 - 디자인 가이드 (색 통일) */
 .badge-type-live {
   background: rgba(52, 199, 89, 0.12);
-  color: #2D9D4A;
+  color: #2d9d4a;
 }
 
 .badge-type-direct {
@@ -781,9 +787,15 @@ input:checked + .toggle-slider::before {
   color: var(--accent-primary);
 }
 
+.badge-type-instant {
+  background: rgba(230, 126, 34, 0.12);
+  color: #c0611b;
+}
+
 /* 통합경매 행 구분 */
 .live-bid-row td:first-child,
-.direct-bid-row td:first-child {
+.direct-bid-row td:first-child,
+.instant-bid-row td:first-child {
   font-weight: 500;
 }
 
@@ -878,7 +890,9 @@ input:checked + .toggle-slider::before {
   object-fit: contain;
   display: block;
   background: #fff;
-  transition: transform 0.25s ease, transform-origin 0.2s ease;
+  transition:
+    transform 0.25s ease,
+    transform-origin 0.2s ease;
 }
 
 .live-detail-main-image.zoom-active {

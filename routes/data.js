@@ -132,7 +132,15 @@ router.get("/", async (req, res) => {
         [userId],
       );
 
-      bidData = [...userLiveBids, ...userDirectBids];
+      const [userInstantPurchases] = await pool.query(
+        `
+        SELECT 'instant' as bid_type, item_id, purchase_price, status, id
+        FROM instant_purchases WHERE user_id = ?
+      `,
+        [userId],
+      );
+
+      bidData = [...userLiveBids, ...userDirectBids, ...userInstantPurchases];
       if (bidsOnly === "true") {
         userBidItemIds = bidData.map((bid) => bid.item_id);
       }
@@ -409,6 +417,7 @@ router.get("/", async (req, res) => {
         bids: {
           live: itemBids.live || null,
           direct: itemBids.direct || null,
+          instant: itemBids.instant || null,
         },
       };
     });

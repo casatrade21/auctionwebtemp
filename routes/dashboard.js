@@ -47,6 +47,13 @@ router.get("/summary", isAdmin, async (req, res) => {
       GROUP BY d.status
     `);
 
+    // 바로 구매 상태 조회
+    const [instantPurchasesCount] = await connection.query(`
+      SELECT ip.status, COUNT(*) as count
+      FROM instant_purchases ip
+      GROUP BY ip.status
+    `);
+
     // 예약된 경매 조회 (미래 날짜인 경우)
     const [scheduledAuctions] = await connection.query(`
       SELECT COUNT(*) as count
@@ -84,10 +91,23 @@ router.get("/summary", isAdmin, async (req, res) => {
       }
     });
 
+    const instantPurchasesResult = {
+      pending: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+
+    instantPurchasesCount.forEach((item) => {
+      if (item.status in instantPurchasesResult) {
+        instantPurchasesResult[item.status] = item.count;
+      }
+    });
+
     // 응답 데이터 구성
     const summary = {
       liveBids: liveBidsResult,
       directAuctions: directBidsResult,
+      instantPurchases: instantPurchasesResult,
     };
 
     res.status(200).json(summary);
@@ -127,6 +147,17 @@ router.get("/activities", isAdmin, async (req, res) => {
       [parseInt(limit, 10)],
     );
 
+    // 최근 바로 구매 활동
+    const [recentInstantPurchases] = await connection.query(
+      `
+      SELECT id, status, updated_at
+      FROM instant_purchases
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `,
+      [parseInt(limit, 10)],
+    );
+
     // 자바스크립트에서 데이터 가공
     const liveBidActivities = recentLiveBids.map((bid) => ({
       type: "bid",
@@ -140,8 +171,18 @@ router.get("/activities", isAdmin, async (req, res) => {
       time: bid.updated_at,
     }));
 
+    const instantPurchaseActivities = recentInstantPurchases.map((bid) => ({
+      type: "instant",
+      content: `바로 구매: ${bid.id} 상태 변경 - ${bid.status}`,
+      time: bid.updated_at,
+    }));
+
     // 모든 활동 병합 및 최신순 정렬
-    const allActivities = [...liveBidActivities, ...directBidActivities]
+    const allActivities = [
+      ...liveBidActivities,
+      ...directBidActivities,
+      ...instantPurchaseActivities,
+    ]
       .sort((a, b) => new Date(b.time) - new Date(a.time))
       .slice(0, parseInt(limit, 10));
 
@@ -180,6 +221,14 @@ router.get("/kpi", isAdmin, async (req, res) => {
       GROUP BY status
     `);
 
+    // 바로 구매 상태 조회
+    const [instantPurchasesStatus] = await connection.query(`
+      SELECT status, COUNT(*) as count
+      FROM instant_purchases
+      WHERE status IN ('completed', 'cancelled')
+      GROUP BY status
+    `);
+
     // 평균 입찰가 조회
     const [liveBidPrices] = await connection.query(`
       SELECT final_price
@@ -191,6 +240,12 @@ router.get("/kpi", isAdmin, async (req, res) => {
       SELECT current_price
       FROM direct_bids
       WHERE current_price IS NOT NULL
+    `);
+
+    const [instantPurchasePrices] = await connection.query(`
+      SELECT purchase_price
+      FROM instant_purchases
+      WHERE purchase_price IS NOT NULL
     `);
 
     // 오늘의 입찰 수 조회
@@ -212,6 +267,15 @@ router.get("/kpi", isAdmin, async (req, res) => {
       [todayStr],
     );
 
+    const [todayInstantPurchases] = await connection.query(
+      `
+      SELECT COUNT(*) as count
+      FROM instant_purchases
+      WHERE DATE(created_at) = ?
+    `,
+      [todayStr],
+    );
+
     // 자바스크립트에서 데이터 가공
     let completedCount = 0;
     let cancelledCount = 0;
@@ -226,6 +290,11 @@ router.get("/kpi", isAdmin, async (req, res) => {
       if (item.status === "cancelled") cancelledCount += item.count;
     });
 
+    instantPurchasesStatus.forEach((item) => {
+      if (item.status === "completed") completedCount += item.count;
+      if (item.status === "cancelled") cancelledCount += item.count;
+    });
+
     const totalProcessed = completedCount + cancelledCount;
     const successRate =
       totalProcessed > 0
@@ -236,6 +305,7 @@ router.get("/kpi", isAdmin, async (req, res) => {
     const allPrices = [
       ...liveBidPrices.map((item) => item.final_price),
       ...directBidPrices.map((item) => item.current_price),
+      ...instantPurchasePrices.map((item) => item.purchase_price),
     ].filter((price) => price !== null && price !== undefined);
 
     let avgBidPrice = 0;
@@ -246,7 +316,9 @@ router.get("/kpi", isAdmin, async (req, res) => {
 
     // 오늘의 입찰 수 합산
     const todayBids =
-      (todayLiveBids[0]?.count || 0) + (todayDirectBids[0]?.count || 0);
+      (todayLiveBids[0]?.count || 0) +
+      (todayDirectBids[0]?.count || 0) +
+      (todayInstantPurchases[0]?.count || 0);
 
     res.status(200).json({
       successRate,
@@ -322,6 +394,13 @@ router.get("/active-users", isAdmin, async (req, res) => {
       ORDER BY db.updated_at DESC
     `);
 
+    const [instantPurchaseUsers] = await connection.query(`
+      SELECT ip.user_id, ip.updated_at, u.login_id
+      FROM instant_purchases ip
+      LEFT JOIN users u ON ip.user_id = u.id
+      ORDER BY ip.updated_at DESC
+    `);
+
     // 자바스크립트에서 데이터 가공
     const userActivities = {};
 
@@ -349,6 +428,28 @@ router.get("/active-users", isAdmin, async (req, res) => {
 
     // 직접 경매 활동 처리
     directBidUsers.forEach((activity) => {
+      const userId = activity.user_id;
+      const activityTime = new Date(activity.updated_at);
+
+      if (
+        !userActivities[userId] ||
+        new Date(userActivities[userId].last_activity) < activityTime
+      ) {
+        userActivities[userId] = {
+          user_id: userId,
+          login_id: activity.login_id,
+          last_activity: activity.updated_at,
+          bid_count: userActivities[userId]
+            ? userActivities[userId].bid_count + 1
+            : 1,
+        };
+      } else {
+        userActivities[userId].bid_count++;
+      }
+    });
+
+    // 바로 구매 활동 처리
+    instantPurchaseUsers.forEach((activity) => {
       const userId = activity.user_id;
       const activityTime = new Date(activity.updated_at);
 
@@ -447,6 +548,7 @@ router.get("/executive-summary", isAdmin, async (req, res) => {
       SELECT
         SUM(CASE WHEN src = 'live' THEN 1 ELSE 0 END) AS liveCount,
         SUM(CASE WHEN src = 'direct' THEN 1 ELSE 0 END) AS directCount,
+        SUM(CASE WHEN src = 'instant' THEN 1 ELSE 0 END) AS instantCount,
         COUNT(*) AS totalCount
       FROM (
         SELECT 'live' AS src, COALESCE(l.completed_at, l.updated_at, l.created_at) AS event_at
@@ -460,9 +562,15 @@ router.get("/executive-summary", isAdmin, async (req, res) => {
         WHERE d.status IN (${revenueStatuses})
           AND CAST(REPLACE(d.winning_price, ',', '') AS DECIMAL(18,2)) > 0
           AND YEAR(COALESCE(d.completed_at, d.updated_at, d.created_at)) = ?
+        UNION ALL
+        SELECT 'instant' AS src, COALESCE(ip.completed_at, ip.updated_at, ip.created_at) AS event_at
+        FROM instant_purchases ip
+        WHERE ip.status IN (${revenueStatuses})
+          AND CAST(REPLACE(ip.purchase_price, ',', '') AS DECIMAL(18,2)) > 0
+          AND YEAR(COALESCE(ip.completed_at, ip.updated_at, ip.created_at)) = ?
       ) t
     `,
-      [targetYear, targetYear],
+      [targetYear, targetYear, targetYear],
     );
 
     const [settlementYearRows] = await safeQuery(
@@ -500,6 +608,11 @@ router.get("/executive-summary", isAdmin, async (req, res) => {
         FROM direct_bids d
         WHERE d.status IN (${revenueStatuses})
           AND CAST(REPLACE(d.winning_price, ',', '') AS DECIMAL(18,2)) > 0
+        UNION ALL
+        SELECT COALESCE(ip.completed_at, ip.updated_at, ip.created_at) AS event_at
+        FROM instant_purchases ip
+        WHERE ip.status IN (${revenueStatuses})
+          AND CAST(REPLACE(ip.purchase_price, ',', '') AS DECIMAL(18,2)) > 0
       ) x
       WHERE x.event_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
     `);
@@ -515,6 +628,8 @@ router.get("/executive-summary", isAdmin, async (req, res) => {
         SELECT DISTINCT user_id FROM live_bids WHERE user_id IS NOT NULL
         UNION
         SELECT DISTINCT user_id FROM direct_bids WHERE user_id IS NOT NULL
+        UNION
+        SELECT DISTINCT user_id FROM instant_purchases WHERE user_id IS NOT NULL
       ) b ON b.user_id = u.id
       WHERE u.role = 'normal'
         AND u.created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -580,6 +695,19 @@ router.get("/executive-summary", isAdmin, async (req, res) => {
              CONVERT(d.item_id USING utf8mb4)
         WHERE d.status = 'completed'
           AND d.shipping_status = 'completed'
+        UNION ALL
+        SELECT
+          'instant' AS bid_type,
+          ip.id AS bid_id,
+          ip.item_id,
+          i.auc_num,
+          COALESCE(ip.completed_at, ip.updated_at, ip.created_at) AS completed_at
+        FROM instant_purchases ip
+        LEFT JOIN crawled_items i
+          ON CONVERT(i.item_id USING utf8mb4) =
+             CONVERT(ip.item_id USING utf8mb4)
+        WHERE ip.status = 'completed'
+          AND ip.shipping_status = 'completed'
       ) z
       WHERE z.completed_at IS NOT NULL
       GROUP BY DATE(z.completed_at), z.auc_num
@@ -603,13 +731,17 @@ router.get("/executive-summary", isAdmin, async (req, res) => {
     const completedCount = Number(countsRows[0]?.totalCount || 0);
     const liveCount = Number(countsRows[0]?.liveCount || 0);
     const directCount = Number(countsRows[0]?.directCount || 0);
+    const instantCount = Number(countsRows[0]?.instantCount || 0);
     const totalCountForSplit = completedCount > 0 ? completedCount : 1;
     const liveRevenueEstimate = Math.round(
       (yearRevenueKrw * liveCount) / totalCountForSplit,
     );
-    const directRevenueEstimate = Math.max(
+    const directRevenueEstimate = Math.round(
+      (yearRevenueKrw * directCount) / totalCountForSplit,
+    );
+    const instantRevenueEstimate = Math.max(
       0,
-      Math.round(yearRevenueKrw - liveRevenueEstimate),
+      Math.round(yearRevenueKrw - liveRevenueEstimate - directRevenueEstimate),
     );
 
     const sixMonthMap = new Map(
@@ -666,6 +798,10 @@ router.get("/executive-summary", isAdmin, async (req, res) => {
         direct: {
           count: directCount,
           revenueKrw: directRevenueEstimate,
+        },
+        instant: {
+          count: instantCount,
+          revenueKrw: instantRevenueEstimate,
         },
       },
     };
@@ -753,6 +889,19 @@ router.get("/pending-domestic-items", isAdmin, async (req, res) => {
           ON CONVERT(i.item_id USING utf8mb4) = CONVERT(d.item_id USING utf8mb4)
         WHERE d.status = 'completed'
           AND d.shipping_status = 'completed'
+        UNION ALL
+        SELECT
+          'instant' AS bid_type,
+          ip.id AS bid_id,
+          ip.item_id,
+          ip.user_id,
+          i.auc_num,
+          COALESCE(ip.completed_at, ip.updated_at, ip.created_at) AS completed_at
+        FROM instant_purchases ip
+        LEFT JOIN crawled_items i
+          ON CONVERT(i.item_id USING utf8mb4) = CONVERT(ip.item_id USING utf8mb4)
+        WHERE ip.status = 'completed'
+          AND ip.shipping_status = 'completed'
       ) z
       LEFT JOIN users u
         ON u.id = z.user_id

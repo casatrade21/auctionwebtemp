@@ -84,7 +84,7 @@ class DatabaseManager {
           throw error;
         }
         console.log(
-          `Attempt ${attempt} failed, retrying in ${this.RETRY_DELAY}ms...`
+          `Attempt ${attempt} failed, retrying in ${this.RETRY_DELAY}ms...`,
         );
         await new Promise((resolve) => setTimeout(resolve, this.RETRY_DELAY));
       }
@@ -132,7 +132,7 @@ class DatabaseManager {
           if (updateFields.length > 0) {
             // 업데이트 쿼리 실행
             const query = `UPDATE ${tableName} SET ${updateFields.join(
-              ", "
+              ", ",
             )} WHERE item_id = ?`;
             values.push(item.item_id);
             await conn.query(query, values);
@@ -180,12 +180,12 @@ class DatabaseManager {
         let updateQuery;
         if (aucNum !== null) {
           updateQuery = `UPDATE ${tableName} SET ${updateFields.join(
-            ", "
+            ", ",
           )} WHERE item_id = ? AND auc_num = ?`;
           updateValues.push(itemId, aucNum);
         } else {
           updateQuery = `UPDATE ${tableName} SET ${updateFields.join(
-            ", "
+            ", ",
           )} WHERE item_id = ?`;
           updateValues.push(itemId);
         }
@@ -195,7 +195,7 @@ class DatabaseManager {
         console.log(
           `Item ${itemId}${
             aucNum ? ` (auc_num=${aucNum})` : ""
-          } details updated successfully`
+          } details updated successfully`,
         );
       });
     } catch (error) {
@@ -216,7 +216,7 @@ class DatabaseManager {
         "..",
         "public",
         "images",
-        folderName
+        folderName,
       );
 
       conn = await this.pool.getConnection();
@@ -231,7 +231,7 @@ class DatabaseManager {
         let hasMore = true;
 
         console.log(
-          `[Cleanup] Collecting image paths from 'values_items' table...`
+          `[Cleanup] Collecting image paths from 'values_items' table...`,
         );
 
         // 배치 단위로 DB 조회
@@ -240,7 +240,7 @@ class DatabaseManager {
             `SELECT image, additional_images
            FROM values_items
            LIMIT ? OFFSET ?`,
-            [QUERY_BATCH_SIZE, offset]
+            [QUERY_BATCH_SIZE, offset],
           );
 
           if (batch.length === 0) {
@@ -280,13 +280,13 @@ class DatabaseManager {
 
         console.log(
           `[Cleanup] Processed ${offset} items total, ` +
-            `${localFilesInUse.size} unique local images in use`
+            `${localFilesInUse.size} unique local images in use`,
         );
 
         // 파일 시스템에서 이미지 정리 (재귀적으로 하위 폴더 포함)
         const allFiles = await this.getAllFilesRecursive(IMAGE_DIR);
         console.log(
-          `[Cleanup] Scanning ${allFiles.length} files in filesystem (including subfolders)...`
+          `[Cleanup] Scanning ${allFiles.length} files in filesystem (including subfolders)...`,
         );
 
         let deletedCount = 0;
@@ -306,13 +306,13 @@ class DatabaseManager {
                 } catch (unlinkError) {
                   console.error(
                     `Error deleting file ${filePath}:`,
-                    unlinkError
+                    unlinkError,
                   );
                   return false;
                 }
               }
               return false;
-            })
+            }),
           );
 
           deletedCount += results.filter((r) => r).length;
@@ -325,15 +325,15 @@ class DatabaseManager {
             console.log(
               `[Cleanup] File cleanup progress: ${Math.min(
                 i + batchSize,
-                allFiles.length
-              )}/${allFiles.length}, ` + `deleted: ${deletedCount}`
+                allFiles.length,
+              )}/${allFiles.length}, ` + `deleted: ${deletedCount}`,
             );
           }
         }
 
         console.log(
           `Complete cleaning up unused images in 'values' folder (S3-aware)\n` +
-            `Deleted ${deletedCount} unused local files`
+            `Deleted ${deletedCount} unused local files`,
         );
       } else {
         // ===== PRODUCTS 폴더 처리 (배치 처리) =====
@@ -341,7 +341,7 @@ class DatabaseManager {
         const activeImagePaths = new Set();
 
         console.log(
-          `[Cleanup] Collecting image paths from 'crawled_items' table...`
+          `[Cleanup] Collecting image paths from 'crawled_items' table...`,
         );
 
         // 1. crawled_items 배치 조회
@@ -353,7 +353,7 @@ class DatabaseManager {
             `SELECT image, additional_images
            FROM crawled_items
            LIMIT ? OFFSET ?`,
-            [QUERY_BATCH_SIZE, offset]
+            [QUERY_BATCH_SIZE, offset],
           );
 
           if (batch.length === 0) {
@@ -367,7 +367,7 @@ class DatabaseManager {
             if (item.additional_images) {
               try {
                 JSON.parse(item.additional_images).forEach((img) =>
-                  activeImagePaths.add(img)
+                  activeImagePaths.add(img),
                 );
               } catch (error) {
                 console.error(`Error parsing additional_images:`, error);
@@ -398,9 +398,11 @@ class DatabaseManager {
              SELECT DISTINCT item_id FROM direct_bids
              UNION
              SELECT DISTINCT item_id FROM live_bids
+             UNION
+             SELECT DISTINCT item_id FROM instant_purchases
            ) b ON ci.item_id = b.item_id
            LIMIT ? OFFSET ?`,
-            [QUERY_BATCH_SIZE, offset]
+            [QUERY_BATCH_SIZE, offset],
           );
 
           if (batch.length === 0) {
@@ -414,7 +416,7 @@ class DatabaseManager {
             if (item.additional_images) {
               try {
                 JSON.parse(item.additional_images).forEach((img) =>
-                  activeImagePaths.add(img)
+                  activeImagePaths.add(img),
                 );
               } catch (error) {
                 console.error(`Error parsing additional_images:`, error);
@@ -430,13 +432,13 @@ class DatabaseManager {
         }
 
         console.log(
-          `[Cleanup] Total ${activeImagePaths.size} unique images in use`
+          `[Cleanup] Total ${activeImagePaths.size} unique images in use`,
         );
 
         // 파일 시스템에서 이미지 정리
         const files = await fs.readdir(IMAGE_DIR);
         console.log(
-          `[Cleanup] Scanning ${files.length} files in filesystem...`
+          `[Cleanup] Scanning ${files.length} files in filesystem...`,
         );
 
         let deletedCount = 0;
@@ -456,13 +458,13 @@ class DatabaseManager {
                 } catch (unlinkError) {
                   console.error(
                     `Error deleting file ${filePath}:`,
-                    unlinkError
+                    unlinkError,
                   );
                   return false;
                 }
               }
               return false;
-            })
+            }),
           );
 
           deletedCount += results.filter((r) => r).length;
@@ -472,21 +474,21 @@ class DatabaseManager {
             console.log(
               `[Cleanup] File cleanup progress: ${Math.min(
                 i + batchSize,
-                files.length
-              )}/${files.length}, ` + `deleted: ${deletedCount}`
+                files.length,
+              )}/${files.length}, ` + `deleted: ${deletedCount}`,
             );
           }
         }
 
         console.log(
           `Complete cleaning up unused images in '${folderName}' folder\n` +
-            `Deleted ${deletedCount} unused files`
+            `Deleted ${deletedCount} unused files`,
         );
       }
     } catch (error) {
       console.error(
         `Error cleaning up unused images in '${folderName}' folder:`,
-        error
+        error,
       );
     } finally {
       if (conn) {
@@ -537,7 +539,7 @@ class DatabaseManager {
         FROM values_items 
         WHERE scheduled_date < DATE_SUB(NOW(), INTERVAL ? DAY) OR scheduled_date IS NULL
       `,
-        [daysThreshold]
+        [daysThreshold],
       );
 
       if (!oldItems.length) {
@@ -554,7 +556,7 @@ class DatabaseManager {
           DELETE FROM values_items 
           WHERE item_id IN (?)
         `,
-          [batchIds]
+          [batchIds],
         );
       }
 
@@ -576,11 +578,13 @@ class DatabaseManager {
     try {
       conn = await this.pool.getConnection();
 
-      // direct_bids와 live_bids 테이블에 있는 item_id 가져오기
+      // direct_bids와 live_bids, instant_purchases 테이블에 있는 item_id 가져오기
       const [bidItems] = await conn.query(`
         SELECT DISTINCT item_id FROM direct_bids
         UNION
         SELECT DISTINCT item_id FROM live_bids
+        UNION
+        SELECT DISTINCT item_id FROM instant_purchases
       `);
 
       // 입찰이 있는 아이템 ID 목록 생성
@@ -615,7 +619,7 @@ class DatabaseManager {
       `);
 
       console.log(
-        "Complete to delete outdated items (protected bid items preserved)"
+        "Complete to delete outdated items (protected bid items preserved)",
       );
     } catch (error) {
       console.error("Error deleting items:", error.message);
@@ -653,7 +657,7 @@ class DatabaseManager {
 
           // 아이템의 속성 중 테이블에 정의된 컬럼만 사용
           const columns = tableSpecificColumns.filter((col) =>
-            itemKeys.has(col)
+            itemKeys.has(col),
           );
 
           const placeholders = columns.map(() => "?").join(", ");
@@ -683,7 +687,7 @@ class DatabaseManager {
                   value = JSON.stringify(value);
                 }
                 return value;
-              })
+              }),
             );
 
             try {
@@ -691,7 +695,7 @@ class DatabaseManager {
             } catch (error) {
               console.error(
                 `Error inserting batch ${i / batchSize + 1}:`,
-                error
+                error,
               );
               // 개별 아이템 삽입 시도
               for (let j = 0; j < batch.length; j++) {
@@ -720,7 +724,7 @@ class DatabaseManager {
                 } catch (singleError) {
                   console.error(
                     `Error inserting item ${batch[j].item_id}:`,
-                    singleError
+                    singleError,
                   );
                 }
               }

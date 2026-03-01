@@ -374,6 +374,11 @@
   color: white;
 }
 
+.instant-type {
+  background-color: var(--orange, #e67e22);
+  color: white;
+}
+
 .status-badge {
   padding: 4px 10px;
   border-radius: 6px;

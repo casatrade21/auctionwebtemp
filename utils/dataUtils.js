@@ -523,6 +523,42 @@ async function syncLiveExpiredStatus() {
 }
 
 /**
+ * Instant(바로 구매) 아이템의 만료 상태 업데이트
+ * 이미 구매 완료된 아이템은 만료 처리
+ */
+async function syncInstantExpiredStatus() {
+  const conn = await pool.getConnection();
+  try {
+    // 이미 구매된 아이템 만료 처리
+    const [expireResult] = await conn.query(`
+      UPDATE crawled_items ci
+      SET is_expired = 1
+      WHERE ci.bid_type = 'instant'
+        AND ci.is_expired = 0
+        AND EXISTS (
+          SELECT 1 FROM instant_purchases ip 
+          WHERE ip.item_id = ci.item_id 
+            AND ip.status IN ('pending', 'completed')
+        )
+    `);
+
+    const totalUpdated = expireResult.changedRows;
+    if (totalUpdated > 0) {
+      console.log(`✅ Instant expired sync: ${totalUpdated} rows updated`);
+    }
+    return {
+      success: true,
+      expired: expireResult.changedRows,
+    };
+  } catch (error) {
+    console.error("❌ Error syncing instant expired status:", error);
+    throw error;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
  * 모든 expired 상태 업데이트 (통합)
  * 수동 호출: 크롤링 완료 시
  */
@@ -531,6 +567,7 @@ async function syncAllExpiredStatus() {
   try {
     await syncDirectExpiredStatus();
     await syncLiveExpiredStatus();
+    await syncInstantExpiredStatus();
     console.log("✅ All expired sync completed");
     return { success: true };
   } catch (error) {
@@ -657,6 +694,7 @@ module.exports = {
   // Expired
   syncDirectExpiredStatus,
   syncLiveExpiredStatus,
+  syncInstantExpiredStatus,
   syncAllExpiredStatus,
 
   // Scheduler

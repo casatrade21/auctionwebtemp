@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>현장 경매 관리</title>
+    <title>바로 구매 관리</title>
     <link rel="stylesheet" href="/styles/common.css" />
     <link rel="stylesheet" href="/styles/admin/common.css" />
     <link rel="stylesheet" href="/styles/admin/bids.css" />
     <link rel="stylesheet" href="/styles/admin/unified.css" />
   </head>
-  <body class="live-bids-page">
+  <body class="instant-purchases-page">
     <div class="admin-layout">
       <!-- 사이드바 -->
       <div class="sidebar">
@@ -18,11 +18,11 @@
         </div>
         <div class="sidebar-menu">
           <a href="/admin">대시보드</a>
-          <a href="/admin/live-bids" class="active">현장 경매 관리</a>
+          <a href="/admin/live-bids">현장 경매 관리</a>
           <a href="/admin/direct-bids">직접 경매 관리</a>
-          <a href="/admin/instant-purchases">바로 구매 관리</a>
+          <a href="/admin/instant-purchases" class="active">바로 구매 관리</a>
           <a href="/admin/all-bids">통합 경매 관리</a>
-          <a href="/admin/bid-results">입찰 결과 & 정산</a>
+          <a href="/admin/bid-results">입찰 결과 &amp; 정산</a>
           <a href="/admin/transactions">거래 내역 관리</a>
           <a href="/admin/invoices">인보이스 관리</a>
           <a href="/admin/users">회원 관리</a>
@@ -38,16 +38,14 @@
       <!-- 메인 콘텐츠 -->
       <div class="main-content">
         <div class="main-header">
-          <h1>현장 경매 관리</h1>
+          <h1>바로 구매 관리</h1>
           <div class="user-info" style="display: flex; align-items: center">
-            <!-- 간단한 토글 버튼 -->
             <div class="admin-switch">
               <a href="#" class="active">경매 관리</a>
               <a href="https://cassystem.com/admin" class="inactive"
                 >명품감정</a
               >
             </div>
-
             관리자
             <button id="logoutBtn" class="btn btn-secondary">로그아웃</button>
           </div>
@@ -67,21 +65,18 @@
             <span class="filter-label">상태</span>
             <div class="filter-tabs">
               <div class="filter-tab active" data-status="">전체</div>
-              <div class="filter-tab" data-status="first">1차입찰</div>
-              <div class="filter-tab" data-status="second">2차제안</div>
-              <div class="filter-tab" data-status="final">최종입찰</div>
               <div class="filter-tab" data-status="completed">완료</div>
               <div class="filter-tab" data-status="domestic_arrived">
                 국내도착
               </div>
               <div class="filter-tab" data-status="processing">작업중</div>
               <div class="filter-tab" data-status="shipped">출고됨</div>
-              <div class="filter-tab" data-status="cancelled">낙찰실패</div>
+              <div class="filter-tab" data-status="cancelled">취소</div>
             </div>
           </div>
         </div>
 
-        <!-- 일괄 작업 -->
+        <!-- 일괄 작업 (선택 시에만 표시) -->
         <div class="bulk-actions" id="bulkActionsBar">
           <div class="bulk-left">
             <span id="bulkSelectionHint" class="bulk-selection-hint"
@@ -90,11 +85,10 @@
             <select
               id="bulkStatusTarget"
               class="form-control form-control-sm bulk-status-target">
-              <option value="completed">완료</option>
               <option value="domestic_arrived">국내도착</option>
               <option value="processing">작업중</option>
               <option value="shipped">출고됨</option>
-              <option value="cancelled">낙찰 실패</option>
+              <option value="cancelled">취소</option>
             </select>
             <button id="bulkShipBtn" class="btn btn-sm" disabled>
               일괄 변경
@@ -110,14 +104,14 @@
           <div id="processingZoneGrid" class="processing-zone-grid"></div>
         </div>
 
-        <!-- 고급 필터 (접이식) - 한 줄 배치 -->
+        <!-- 고급 필터 (접이식) -->
         <details class="advanced-filters" open>
           <summary>정렬 · 기간 · 페이지 설정</summary>
           <div class="filter-options filter-options-row">
             <div class="filter-group">
               <label for="sortBy">정렬 기준</label>
               <select id="sortBy" class="form-control form-control-sm">
-                <option value="original_scheduled_date">예정일</option>
+                <option value="created_at">구매일</option>
                 <option value="updated_at">변경일</option>
                 <option value="original_title">제목</option>
               </select>
@@ -168,26 +162,6 @@
                 <option value="500">500</option>
               </select>
             </div>
-            <div class="filter-group">
-              <label for="aucNumFilter">출품사</label>
-              <select id="aucNumFilter" class="form-control form-control-sm">
-                <option value="">전체</option>
-                <option value="1">1번</option>
-                <option value="2">2번</option>
-                <option value="3">3번</option>
-                <option value="4">4번</option>
-                <option value="5">5번</option>
-              </select>
-            </div>
-            <div
-              class="filter-group"
-              id="firstDateFilterGroup"
-              style="display: none">
-              <label for="firstDateFilter">1차 예정일</label>
-              <select id="firstDateFilter" class="form-control form-control-sm">
-                <option value="">전체</option>
-              </select>
-            </div>
             <div class="filter-actions">
               <button id="applyDateFilter" class="btn btn-sm">적용</button>
               <button id="resetDateFilter" class="btn btn-sm btn-ghost">
@@ -197,30 +171,28 @@
           </div>
         </details>
 
-        <!-- 입찰 목록 테이블 -->
+        <!-- 구매 목록 테이블 -->
         <div class="card">
-          <table class="data-table" id="liveBidsTable">
+          <table class="data-table" id="instantPurchasesTable">
             <thead>
               <tr>
                 <th><input type="checkbox" id="selectAllBids" /></th>
                 <th>ID</th>
                 <th>상품 정보</th>
                 <th>고객 정보</th>
-                <th>1차 입찰가</th>
-                <th>2차 제안가</th>
-                <th>최종 입찰가</th>
-                <th>낙찰 금액</th>
-                <th>낙찰일</th>
+                <th>구매가</th>
+                <th>구매일</th>
+                <th>수정일</th>
                 <th>상태</th>
+                <th>배송 상태</th>
                 <th>감정서</th>
                 <th>수선</th>
-                <th>수정일</th>
                 <th>작업</th>
               </tr>
             </thead>
-            <tbody id="liveBidsTableBody">
+            <tbody id="instantPurchasesTableBody">
               <tr>
-                <td colspan="14" class="text-center">
+                <td colspan="12" class="text-center">
                   데이터를 불러오는 중입니다...
                 </td>
               </tr>
@@ -233,222 +205,48 @@
       </div>
     </div>
 
-    <!-- 2차 제안가 제안 모달 -->
-    <div class="modal-overlay" id="secondPriceModal">
-      <div class="modal-dialog">
-        <div class="modal-header">
-          <h3 class="modal-title">2차 제안가 제안</h3>
-          <button class="close-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="bidId" />
-          <input type="hidden" id="secondPriceItemId" />
-          <p class="form-help" id="secondPriceTargetInfo">
-            상품 단위로 일괄 제안됩니다.
-          </p>
-          <div class="form-group">
-            <label class="form-label" for="secondPrice">2차 제안가</label>
-            <input
-              type="number"
-              id="secondPrice"
-              class="form-control"
-              placeholder="금액 입력" />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary close-modal">취소</button>
-          <button class="btn" id="submitSecondPrice">제안하기</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 입찰 완료 모달 -->
-    <div class="modal-overlay" id="completeModal">
-      <div class="modal-dialog">
-        <div class="modal-header">
-          <h3 class="modal-title">입찰 완료 처리</h3>
-          <button class="close-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="completeBidId" />
-          <p>선택한 입찰을 낙찰 완료 처리하시겠습니까?</p>
-          <p>완료 후에는 취소할 수 없습니다.</p>
-
-          <!-- 낙찰 금액 입력 필드 -->
-          <div class="form-group">
-            <label class="form-label" for="winningPrice"
-              >낙찰 금액 (엔화)</label
-            >
-            <input
-              type="number"
-              id="winningPrice"
-              class="form-control"
-              placeholder="금액 입력" />
-            <div id="winningPriceKRW" class="price-preview">
-              관부가세 포함: -
-            </div>
-            <div id="priceComparisonMessage" class="price-comparison"></div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary close-modal">취소</button>
-          <button class="btn" id="submitComplete">완료 처리</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 입찰 취소 모달 -->
+    <!-- 구매 취소 모달 -->
     <div class="modal-overlay" id="cancelModal">
       <div class="modal-dialog">
         <div class="modal-header">
-          <h3 class="modal-title">입찰 취소 처리</h3>
+          <h3 class="modal-title">구매 취소 처리</h3>
           <button class="close-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <input type="hidden" id="cancelBidId" />
-          <p>선택한 입찰을 취소 처리하시겠습니까?</p>
+          <input type="hidden" id="cancelPurchaseId" />
+          <p>선택한 바로 구매를 취소 처리하시겠습니까?</p>
           <p>취소 후에는 되돌릴 수 없습니다.</p>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary close-modal">취소</button>
-          <button class="btn btn-danger" id="submitCancel">입찰 취소</button>
+          <button class="btn btn-danger" id="submitCancel">구매 취소</button>
         </div>
       </div>
     </div>
 
-    <!-- 일괄 낙찰 완료 모달 -->
-    <div class="modal-overlay" id="bulkCompleteModal">
+    <!-- 배송 상태 변경 모달 -->
+    <div class="modal-overlay" id="shippingModal">
       <div class="modal-dialog">
         <div class="modal-header">
-          <h3 class="modal-title">일괄 낙찰 완료 처리</h3>
+          <h3 class="modal-title">배송 상태 변경</h3>
           <button class="close-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p>
-            선택한 <span id="bulkCompleteCount">0</span>개 항목을 낙찰 완료
-            처리하시겠습니까?
-          </p>
-          <p>완료 후에는 취소할 수 없습니다.</p>
-
-          <!-- 낙찰 금액 입력 필드 -->
+          <input type="hidden" id="shippingPurchaseId" />
           <div class="form-group">
-            <label class="form-label" for="bulkWinningPrice"
-              >낙찰 금액 (엔화)</label
-            >
-            <input
-              type="number"
-              id="bulkWinningPrice"
-              class="form-control"
-              placeholder="금액 입력" />
-            <div id="bulkWinningPriceKRW" class="price-preview">
-              관부가세 포함: -
-            </div>
-            <p class="note">
-              ※ 금액을 입력하지 않으면 각 입찰의 최종 입찰가가 사용됩니다.
-            </p>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary close-modal">취소</button>
-          <button class="btn" id="submitBulkComplete">완료 처리</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 일괄 낙찰 실패 모달 -->
-    <div class="modal-overlay" id="bulkCancelModal">
-      <div class="modal-dialog">
-        <div class="modal-header">
-          <h3 class="modal-title">일괄 낙찰 실패 처리</h3>
-          <button class="close-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p>
-            선택한 <span id="bulkCancelCount">0</span>개 항목을 낙찰 실패
-            처리하시겠습니까?
-          </p>
-          <p>취소 후에는 되돌릴 수 없습니다.</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary close-modal">취소</button>
-          <button class="btn btn-danger" id="submitBulkCancel">
-            입찰 취소
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 입찰 정보 수정 모달 -->
-    <div class="modal-overlay" id="editBidModal">
-      <div class="modal-dialog">
-        <div class="modal-header">
-          <h3 class="modal-title">입찰 정보 수정</h3>
-          <button class="close-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="editBidId" />
-
-          <div class="form-group">
-            <label class="form-label" for="editFirstPrice"
-              >1차 입찰가 (엔화)</label
-            >
-            <input
-              type="number"
-              id="editFirstPrice"
-              class="form-control"
-              placeholder="1차 입찰가 입력" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="editSecondPrice"
-              >2차 제안가 (엔화)</label
-            >
-            <input
-              type="number"
-              id="editSecondPrice"
-              class="form-control"
-              placeholder="2차 제안가 입력" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="editFinalPrice"
-              >최종 입찰가 (엔화)</label
-            >
-            <input
-              type="number"
-              id="editFinalPrice"
-              class="form-control"
-              placeholder="최종 입찰가 입력" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="editStatus">상태</label>
-            <select id="editStatus" class="form-control">
-              <option value="first">1차 입찰</option>
-              <option value="second">2차 제안</option>
-              <option value="final">최종 입찰</option>
-              <option value="completed">완료</option>
+            <label class="form-label" for="shippingStatus">배송 상태</label>
+            <select id="shippingStatus" class="form-control">
+              <option value="pending">대기</option>
               <option value="domestic_arrived">국내도착</option>
               <option value="processing">작업중</option>
               <option value="shipped">출고됨</option>
-              <option value="cancelled">낙찰 실패</option>
+              <option value="completed">완료</option>
             </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="editWinningPrice"
-              >낙찰 금액 (엔화)</label
-            >
-            <input
-              type="number"
-              id="editWinningPrice"
-              class="form-control"
-              placeholder="낙찰 금액 입력" />
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary close-modal">취소</button>
-          <button class="btn" id="submitEditBid">수정 저장</button>
+          <button class="btn" id="submitShipping">상태 변경</button>
         </div>
       </div>
     </div>
@@ -461,10 +259,7 @@
           <button class="close-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <input type="hidden" id="repairBidId" />
-          <input type="hidden" id="repairBidType" />
-
-          <!-- 수선 신청 시간 표시 -->
+          <input type="hidden" id="repairPurchaseId" />
           <div
             class="form-group"
             id="repairRequestedAtGroup"
@@ -475,7 +270,6 @@
               id="repairRequestedAt"
               style="padding: 0.5rem 0; color: #666"></div>
           </div>
-
           <div class="form-group">
             <label class="form-label" for="repairDetails">수선 내용</label>
             <textarea
@@ -484,7 +278,6 @@
               rows="4"
               placeholder="수선 내용을 입력하세요"></textarea>
           </div>
-
           <div class="form-group">
             <label class="form-label" for="repairFee"
               >수선 비용 (원화, VAT 포함)</label
@@ -495,9 +288,9 @@
               class="form-control"
               placeholder="수선 비용 입력 (예: 50000)"
               step="1000" />
-            <small class="form-text text-muted">
-              ※ 비용을 입력하지 않으면 0원으로 처리됩니다.
-            </small>
+            <small class="form-text text-muted"
+              >※ 비용을 입력하지 않으면 0원으로 처리됩니다.</small
+            >
           </div>
         </div>
         <div class="modal-footer">
@@ -513,7 +306,8 @@
       </div>
     </div>
 
-    <div class="modal-overlay" id="liveProductDetailModal">
+    <!-- 상품 상세 모달 -->
+    <div class="modal-overlay" id="instantProductDetailModal">
       <div class="modal-dialog live-detail-modal">
         <div class="modal-header">
           <h3 class="modal-title">상품 상세</h3>
@@ -523,87 +317,63 @@
           <div class="live-detail-left">
             <div
               class="live-detail-main-image-wrap"
-              id="liveDetailMainImageWrap">
+              id="instantDetailMainImageWrap">
               <button
                 type="button"
                 class="live-detail-nav prev"
-                id="liveDetailPrevBtn">
+                id="instantDetailPrevBtn">
                 &lt;
               </button>
               <img
-                id="liveDetailMainImage"
+                id="instantDetailMainImage"
                 class="live-detail-main-image"
                 src="/images/no-image.png"
                 alt="상품 이미지" />
               <button
                 type="button"
                 class="live-detail-nav next"
-                id="liveDetailNextBtn">
+                id="instantDetailNextBtn">
                 &gt;
               </button>
             </div>
-            <div id="liveDetailThumbs" class="live-detail-thumbs"></div>
+            <div id="instantDetailThumbs" class="live-detail-thumbs"></div>
           </div>
           <div class="live-detail-info">
-            <input type="hidden" id="liveDetailBidId" />
-            <input type="hidden" id="liveDetailQuickItemId" />
             <div class="live-detail-row">
-              <strong>상품ID</strong><span id="liveDetailItemId">-</span>
+              <strong>상품ID</strong><span id="instantDetailItemId">-</span>
             </div>
             <div class="live-detail-row">
-              <strong>제목</strong><span id="liveDetailTitle">-</span>
+              <strong>제목</strong><span id="instantDetailTitle">-</span>
             </div>
             <div class="live-detail-row">
-              <strong>브랜드</strong><span id="liveDetailBrand">-</span>
+              <strong>브랜드</strong><span id="instantDetailBrand">-</span>
             </div>
             <div class="live-detail-row">
-              <strong>카테고리</strong><span id="liveDetailCategory">-</span>
+              <strong>카테고리</strong><span id="instantDetailCategory">-</span>
             </div>
             <div class="live-detail-row">
-              <strong>등급</strong><span id="liveDetailRank">-</span>
+              <strong>등급</strong><span id="instantDetailRank">-</span>
             </div>
             <div class="live-detail-row">
-              <strong>예정일시</strong><span id="liveDetailScheduled">-</span>
+              <strong>예정일시</strong
+              ><span id="instantDetailScheduled">-</span>
             </div>
             <div class="live-detail-row">
               <strong>액세서리코드</strong
-              ><span id="liveDetailAccessoryCode">-</span>
+              ><span id="instantDetailAccessoryCode">-</span>
             </div>
             <div class="live-detail-row">
-              <strong>설명</strong><span id="liveDetailDescription">-</span>
+              <strong>설명</strong><span id="instantDetailDescription">-</span>
             </div>
             <div class="live-detail-row">
               <strong>원본링크</strong
               ><a
-                id="liveDetailOriginLink"
+                id="instantDetailOriginLink"
                 href="#"
                 target="_blank"
                 rel="noopener noreferrer"
                 >열기</a
               >
-            </div>
-            <div
-              class="live-detail-quick-propose"
-              id="liveDetailQuickProposeBox">
-              <div class="live-detail-quick-title">2차 제안 바로 등록</div>
-              <p
-                class="live-detail-quick-target"
-                id="liveDetailQuickTargetText">
-                상품 단위로 일괄 적용됩니다.
-              </p>
-              <div class="live-detail-quick-controls">
-                <input
-                  type="number"
-                  id="liveDetailSecondPrice"
-                  class="form-control form-control-sm"
-                  placeholder="2차 제안가 입력" />
-                <button
-                  type="button"
-                  class="btn btn-sm"
-                  id="liveDetailSubmitSecondPrice">
-                  2차 제안
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -621,6 +391,9 @@
     <!-- Admin 전용 스크립트 -->
     <script src="/js/admin/common.js"></script>
     <script src="/js/admin/api.js"></script>
-    <script src="/js/admin/live-bids.js"></script>
+    <script src="/js/admin/instant-purchases.js"></script>
+
+    <!-- Socket.IO 라이브러리 -->
+    <script src="/socket.io/socket.io.js"></script>
   </body>
 </html>

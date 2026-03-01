@@ -169,10 +169,22 @@ async function resolveSourceBid(conn, item) {
     `,
     [sourceItemId],
   );
+  const [instantRows] = await conn.query(
+    `
+    SELECT id, updated_at
+    FROM instant_purchases
+    WHERE item_id = ?
+      AND status = 'completed'
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 1
+    `,
+    [sourceItemId],
+  );
 
   const candidates = [
     directRows[0] ? { bidType: "direct", ...directRows[0] } : null,
     liveRows[0] ? { bidType: "live", ...liveRows[0] } : null,
+    instantRows[0] ? { bidType: "instant", ...instantRows[0] } : null,
   ]
     .filter(Boolean)
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
@@ -209,7 +221,12 @@ async function syncBidStatusByLocation(conn, item, toLocationCode) {
 
   // WMS 스캔 위치에 따라 bid 테이블의 shipping_status를 직접 업데이트한다.
   // status = 'completed'인 경우에만 허용 (불변성 보장)
-  const bidTable = bidType === "direct" ? "direct_bids" : "live_bids";
+  const bidTable =
+    bidType === "direct"
+      ? "direct_bids"
+      : bidType === "instant"
+        ? "instant_purchases"
+        : "live_bids";
   await conn.query(
     `UPDATE ${bidTable} SET shipping_status = ?, updated_at = NOW() WHERE id = ? AND status = 'completed'`,
     [nextBidStatus, bidId],
@@ -246,7 +263,12 @@ async function fetchBidRequestInfo(conn, bidType, bidId) {
     };
   }
 
-  const tableName = bidType === "live" ? "live_bids" : "direct_bids";
+  const tableName =
+    bidType === "live"
+      ? "live_bids"
+      : bidType === "instant"
+        ? "instant_purchases"
+        : "direct_bids";
   const [rows] = await conn.query(
     `
     SELECT appr_id, repair_requested_at
@@ -345,6 +367,7 @@ async function findCrawledItemByScannedCode(conn, scannedCode) {
 async function findOwnerByItemId(conn, itemId) {
   const liveCols = await getTableColumns(conn, "live_bids");
   const directCols = await getTableColumns(conn, "direct_bids");
+  const instantCols = await getTableColumns(conn, "instant_purchases");
   const liveOrderBy = liveCols.has("updated_at")
     ? "ORDER BY updated_at DESC"
     : liveCols.has("created_at")
@@ -357,6 +380,13 @@ async function findOwnerByItemId(conn, itemId) {
     : directCols.has("created_at")
       ? "ORDER BY created_at DESC"
       : directCols.has("id")
+        ? "ORDER BY id DESC"
+        : "";
+  const instantOrderBy = instantCols.has("updated_at")
+    ? "ORDER BY updated_at DESC"
+    : instantCols.has("created_at")
+      ? "ORDER BY created_at DESC"
+      : instantCols.has("id")
         ? "ORDER BY id DESC"
         : "";
   const [liveRows] = await conn.query(
@@ -381,8 +411,19 @@ async function findOwnerByItemId(conn, itemId) {
     `,
     [itemId],
   );
+  const [instantRows] = await conn.query(
+    `
+    SELECT user_id,
+           ${instantCols.has("updated_at") ? "updated_at" : "NULL AS updated_at"}
+    FROM instant_purchases
+    WHERE item_id = ?
+    ${instantOrderBy}
+    LIMIT 1
+    `,
+    [itemId],
+  );
 
-  const winner = [liveRows[0], directRows[0]]
+  const winner = [liveRows[0], directRows[0], instantRows[0]]
     .filter(Boolean)
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
 
@@ -1120,10 +1161,11 @@ router.get("/board", isAdmin, async (req, res) => {
           CASE
             WHEN d.id IS NOT NULL THEN 'direct'
             WHEN l.id IS NOT NULL THEN 'live'
+            WHEN ip.id IS NOT NULL THEN 'instant'
             ELSE NULL
           END
         ) AS source_bid_type,
-        COALESCE(i.source_bid_id, d.id, l.id) AS source_bid_id,
+        COALESCE(i.source_bid_id, d.id, l.id, ip.id) AS source_bid_id,
         i.source_item_id,
         i.current_status,
         i.current_location_code,
@@ -1175,11 +1217,14 @@ router.get("/board", isAdmin, async (req, res) => {
       LEFT JOIN live_bids l
         ON i.source_bid_type = 'live'
        AND i.source_bid_id = l.id
+      LEFT JOIN instant_purchases ip
+        ON i.source_bid_type = 'instant'
+       AND i.source_bid_id = ip.id
       LEFT JOIN crawled_items ci
         ON CONVERT(ci.item_id USING utf8mb4) =
-           CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id) USING utf8mb4)
+           CONVERT(COALESCE(i.source_item_id, d.item_id, l.item_id, ip.item_id) USING utf8mb4)
       LEFT JOIN users u
-        ON u.id = COALESCE(d.user_id, l.user_id)
+        ON u.id = COALESCE(d.user_id, l.user_id, ip.user_id)
       WHERE i.current_status <> 'COMPLETED'
         AND (
           NULLIF(TRIM(i.internal_barcode), '') IS NOT NULL
@@ -1288,7 +1333,36 @@ router.get("/auction-completed", isAdmin, async (req, res) => {
       params,
     );
 
-    const rows = [...liveRows, ...directRows];
+    const [instantRows] = await pool.query(
+      `
+      SELECT
+        'instant' AS bid_type,
+        ip.id AS bid_id,
+        ip.item_id,
+        ip.status,
+        ip.purchase_price AS winning_price,
+        i.auc_num,
+        i.original_title,
+        i.brand,
+        i.category,
+        COALESCE(i.original_scheduled_date, i.scheduled_date) AS scheduled_at,
+        u.company_name,
+        w.id AS wms_item_id,
+        w.internal_barcode
+      FROM instant_purchases ip
+      JOIN crawled_items i ON ip.item_id = i.item_id
+      LEFT JOIN users u ON ip.user_id = u.id
+      LEFT JOIN wms_items w
+        ON w.source_bid_type = 'instant' AND w.source_bid_id = ip.id
+      WHERE DATE(COALESCE(i.original_scheduled_date, i.scheduled_date)) = ?
+        ${aucCondition}
+        AND ip.status = 'completed'
+      ORDER BY i.auc_num ASC, i.original_scheduled_date ASC, ip.id ASC
+      `,
+      params,
+    );
+
+    const rows = [...liveRows, ...directRows, ...instantRows];
     res.json({ ok: true, items: rows });
   } catch (error) {
     console.error("WMS auction-completed error:", error);
@@ -1427,7 +1501,11 @@ router.post("/auction-labels", isAdmin, async (req, res) => {
       // 라벨 생성 시점: bid 테이블 shipping_status = 'domestic_arrived' 로 전환
       // (WMS 아이템이 DOMESTIC_ARRIVAL_ZONE에 등록됨 = 국내 도착 처리)
       const bidTableForLabel =
-        bidType === "direct" ? "direct_bids" : "live_bids";
+        bidType === "direct"
+          ? "direct_bids"
+          : bidType === "instant"
+            ? "instant_purchases"
+            : "live_bids";
       await conn.query(
         `UPDATE ${bidTableForLabel} SET shipping_status = 'domestic_arrived', updated_at = NOW() WHERE id = ? AND status = 'completed'`,
         [bidId],

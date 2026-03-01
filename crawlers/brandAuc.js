@@ -169,10 +169,11 @@ class BrandAucCrawler extends AxiosCrawler {
       const allCrawledItems = [];
       const size = 1000; // 한 페이지당 항목 수
 
-      // Live 경매와 Direct 경매 모두 수집
+      // Live 경매, Direct 경매, Instant(바로 구매) 모두 수집
       const bidTypes = [
         { type: "live", otherCds: "1" }, // Live 경매는 기존 방식 유지
         { type: "direct" }, // Direct 경매는 새로운 API 사용
+        { type: "instant", otherCds: "3,5,6" }, // 바로 구매 (모아/즉매)
       ];
 
       for (const bidConfig of bidTypes) {
@@ -397,6 +398,96 @@ class BrandAucCrawler extends AxiosCrawler {
                 allCrawledItems.push(...pageItems);
               }
             });
+          } else if (bidConfig.type === "instant") {
+            // 바로 구매(Instant) 크롤링 - Live와 같은 previewItems API 사용
+            const clientInfo = this.getClient();
+
+            const firstPageResponse = await clientInfo.client.get(
+              this.config.previewItemsApiUrl,
+              {
+                params: {
+                  page: 0,
+                  size: size,
+                  gamenId: "B02-01",
+                  otherCds: bidConfig.otherCds,
+                },
+                headers: {
+                  Accept: "application/json",
+                },
+              },
+            );
+
+            const totalPages = firstPageResponse.data.totalPages;
+            const totalItems = firstPageResponse.data.totalElements;
+
+            console.log(
+              `Found ${totalItems} items across ${totalPages} pages for bid type: ${bidConfig.type}`,
+            );
+
+            // 첫 페이지 아이템 처리
+            const firstPageItems = await this.processItemsPage(
+              firstPageResponse.data.content,
+              existingIds,
+              bidConfig.type,
+              true,
+            );
+            allCrawledItems.push(...firstPageItems);
+
+            // 나머지 페이지 병렬 처리
+            const instantLimit = pLimit(LIMIT2);
+            const instantPagePromises = [];
+
+            for (let page = 1; page < totalPages; page++) {
+              instantPagePromises.push(
+                instantLimit(async () => {
+                  console.log(
+                    `Crawling instant page ${page + 1} of ${totalPages}`,
+                  );
+
+                  const pageClientInfo = this.getClient();
+
+                  const response = await pageClientInfo.client.get(
+                    this.config.previewItemsApiUrl,
+                    {
+                      params: {
+                        page: page,
+                        size: size,
+                        gamenId: "B02-01",
+                        otherCds: bidConfig.otherCds,
+                      },
+                      headers: {
+                        Accept: "application/json",
+                      },
+                    },
+                  );
+
+                  if (response.data && response.data.content) {
+                    const pageItems = await this.processItemsPage(
+                      response.data.content,
+                      existingIds,
+                      bidConfig.type,
+                      true,
+                    );
+
+                    console.log(
+                      `Processed ${pageItems.length} instant items from page ${
+                        page + 1
+                      } with ${pageClientInfo.name}`,
+                    );
+
+                    return pageItems;
+                  }
+                  return [];
+                }),
+              );
+            }
+
+            const instantPageResults = await Promise.all(instantPagePromises);
+            instantPageResults.forEach((pageItems) => {
+              if (pageItems && pageItems.length > 0) {
+                allCrawledItems.push(...pageItems);
+              }
+            });
           }
         } catch (error) {
           console.error(
@@ -456,6 +547,11 @@ class BrandAucCrawler extends AxiosCrawler {
         bidType === "live" &&
         (item.jotaiEn === "SOLD BY HOLD" || item.jotaiEn === "SOLD")
       ) {
+        continue;
+      }
+
+      // Instant(바로 구매)일 경우 Available 상태만 허용
+      if (bidType === "instant" && item.jotaiEn !== "Available") {
         continue;
       }
 
@@ -544,6 +640,12 @@ class BrandAucCrawler extends AxiosCrawler {
         );
       }
       scheduled_date = original_scheduled_date;
+    } else if (bidType === "instant") {
+      // instant 타입은 아이템별 kaisaiYmd 사용 (시간 필터링 없음)
+      original_scheduled_date = this.extractDate(
+        this.convertToKST(item.kaisaiYmd),
+      );
+      scheduled_date = original_scheduled_date;
     } else {
       // live 타입은 아이템별 값 사용
       original_scheduled_date = this.extractDate(
@@ -569,7 +671,10 @@ class BrandAucCrawler extends AxiosCrawler {
       title: this.removeLeadingBrackets(original_title),
       brand: this.convertFullWidthToAscii(item.maker || ""),
       rank: this.convertFullWidthToAscii(item.hyoka || ""),
-      starting_price: item.genzaiKng || item.startKng || 0,
+      starting_price:
+        bidType === "instant"
+          ? item.kakaku || 0
+          : item.genzaiKng || item.startKng || 0,
       image: image,
       category: category,
       original_scheduled_date: original_scheduled_date,
@@ -579,15 +684,24 @@ class BrandAucCrawler extends AxiosCrawler {
 
       // 상세 정보 요청 시 필요한 데이터 - additional_info에 저장
       additional_info:
-        bidType === "direct"
+        bidType === "instant"
           ? {
-              kaisaiKaisu: this.auctionKaisu,
-              kaijoKbn: item.kaijoKbn || 1,
-            }
-          : {
               kaijoCd: item.kaijoCd,
               kaisaiKaisu: item.kaisaiKaisu,
-            },
+              invTorokuBng: item.invTorokuBng,
+              lockVersion: item.lockVersion || 0,
+              genreCd: item.genreCd,
+              toriatsukaiKeitai: item.toriatsukaiKeitai,
+            }
+          : bidType === "direct"
+            ? {
+                kaisaiKaisu: this.auctionKaisu,
+                kaijoKbn: item.kaijoKbn || 1,
+              }
+            : {
+                kaijoCd: item.kaijoCd,
+                kaisaiKaisu: item.kaisaiKaisu,
+              },
     };
   }
 
@@ -1037,6 +1151,82 @@ class BrandAucCrawler extends AxiosCrawler {
       return {
         success: false,
         message: "Bid failed",
+        error: error.message,
+      };
+    });
+  }
+
+  /**
+   * 바로 구매 (Instant Buy) - BrandAuc 모아/즉매 구매
+   * @param {number} invTorokuBng - 등록번호 (invTorokuBng from crawl data)
+   * @param {number} comLockVersion - comLockVersion (from crawl data, default 0)
+   * @param {string} genreCd - 장르 코드 (from crawl data)
+   * @returns {Object} { success, message, data }
+   */
+  async instantBuy(invTorokuBng, comLockVersion = 0, genreCd) {
+    return await this.retryOperation(
+      async () => {
+        // 로그인 상태 확인
+        await this.login();
+
+        // 직접 연결 클라이언트 사용
+        const clientInfo = this.getClient();
+
+        // XSRF 토큰 추출 (쿠키에서)
+        const cookies = await clientInfo.cookieJar.getCookies(
+          "https://u.brand-auc.com/",
+        );
+        const xsrfToken = cookies.find(
+          (cookie) => cookie.key === "XSRF-TOKEN",
+        )?.value;
+
+        if (!xsrfToken) {
+          throw new Error("XSRF token not found in cookies");
+        }
+
+        const itemUrl = `https://u.brand-auc.com/previewDetailItem?genreCd=${genreCd}&torokuBng=${invTorokuBng}`;
+
+        const response = await clientInfo.client.post(
+          "https://u.brand-auc.com/api/v1/negotiations/tempOrder",
+          {
+            torokuBng: invTorokuBng,
+            comLockVersion: comLockVersion,
+            shodanLockVersion: null,
+            url: itemUrl,
+          },
+          {
+            timeout: 10000,
+            headers: {
+              "Content-Type": "application/json",
+              "accept-encoding": "gzip, deflate, br, zstd",
+              Referer: "https://u.brand-auc.com/",
+              "X-XSRF-TOKEN": xsrfToken,
+            },
+          },
+        );
+
+        if (response.status === 200 || response.status === 201) {
+          return {
+            success: true,
+            message: "Instant purchase successful",
+            data: response.data,
+          };
+        } else {
+          throw new Error(
+            "Instant purchase failed with status " + response.status,
+          );
+        }
+      },
+      3,
+      10 * 1000,
+    ).catch((error) => {
+      console.error(
+        `Error instant buying item ${invTorokuBng}:`,
+        error.message,
+      );
+      return {
+        success: false,
+        message: "Instant purchase failed",
         error: error.message,
       };
     });

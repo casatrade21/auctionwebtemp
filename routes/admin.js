@@ -1268,12 +1268,16 @@ router.get("/member-groups/:id/members", isAdmin, async (req, res) => {
            UNION ALL
            SELECT user_id, COALESCE(CAST(REPLACE(COALESCE(winning_price,current_price), ',', '') AS DECIMAL(18,2)), 0) AS amount_jpy
            FROM direct_bids WHERE user_id IS NOT NULL AND status = 'completed'
+           UNION ALL
+           SELECT user_id, COALESCE(CAST(REPLACE(purchase_price, ',', '') AS DECIMAL(18,2)), 0) AS amount_jpy
+           FROM instant_purchases WHERE user_id IS NOT NULL AND status = 'completed'
          ) t GROUP BY user_id
        ) bt ON bt.user_id = u.id
        LEFT JOIN (
          SELECT user_id, MAX(bid_at) AS last_bid_at FROM (
            SELECT user_id, created_at AS bid_at FROM live_bids WHERE user_id IS NOT NULL
            UNION ALL SELECT user_id, created_at AS bid_at FROM direct_bids WHERE user_id IS NOT NULL
+           UNION ALL SELECT user_id, created_at AS bid_at FROM instant_purchases WHERE user_id IS NOT NULL
          ) t GROUP BY user_id
        ) lb ON lb.user_id = u.id
        WHERE umg.group_id = ?
@@ -1606,6 +1610,31 @@ router.get("/export/bids", isAdmin, async (req, res) => {
       allRows.push(...directRows);
     }
 
+    // 바로 구매 데이터 (type이 비어있거나 'instant'인 경우)
+    if (!type || type === "instant") {
+      const instantQuery = `
+        SELECT 
+          'instant' as type,
+          b.id, b.status, b.user_id,
+          NULL as first_price, NULL as second_price, 
+          b.purchase_price as final_price, b.purchase_price as winning_price,
+          b.appr_id, b.repair_requested_at, b.repair_details, b.repair_fee,
+          NULL as submitted_to_platform,
+          b.created_at, b.updated_at, b.completed_at,
+          i.item_id, i.original_title, i.title, i.brand, i.category, i.image,
+          i.scheduled_date, i.original_scheduled_date, i.auc_num, i.rank, i.starting_price,
+          u.login_id, u.company_name
+        FROM instant_purchases b
+        LEFT JOIN crawled_items i ON b.item_id = i.item_id
+        LEFT JOIN users u ON b.user_id = u.id
+        WHERE ${whereClause}
+        ORDER BY ${orderByColumn} ${direction}
+      `;
+
+      const [instantRows] = await connection.query(instantQuery, queryParams);
+      allRows.push(...instantRows);
+    }
+
     console.log(`총 ${allRows.length}개 입찰 항목 조회 완료`);
 
     // 엑셀 컬럼 정의
@@ -1891,7 +1920,33 @@ router.get("/export/bid-results", isAdmin, async (req, res) => {
         [user_id, settlement_date],
       );
 
-      const items = [...liveBids, ...directBids];
+      // 낙찰 완료된 instant_purchases 조회
+      const [instantBids] = await connection.query(
+        `SELECT 
+           ip.id,
+           'instant' as type,
+           ip.item_id,
+           NULL as first_price,
+           NULL as second_price,
+           ip.purchase_price as final_price,
+           ip.purchase_price as winning_price,
+           ip.status,
+           ip.appr_id,
+           ip.repair_fee,
+           i.title,
+           i.original_title,
+           i.brand,
+           i.category,
+           i.auc_num,
+           i.starting_price,
+           i.image
+         FROM instant_purchases ip
+         JOIN crawled_items i ON ip.item_id = i.item_id
+         WHERE ip.user_id = ? AND DATE(i.scheduled_date) = ? AND ip.status = 'completed'`,
+        [user_id, settlement_date],
+      );
+
+      const items = [...liveBids, ...directBids, ...instantBids];
 
       // 아이템이 없어도 정산 요약 행은 추가 (아이템별 행 구조)
       if (items.length === 0) {

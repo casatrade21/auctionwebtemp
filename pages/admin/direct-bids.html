@@ -20,6 +20,7 @@
           <a href="/admin">대시보드</a>
           <a href="/admin/live-bids">현장 경매 관리</a>
           <a href="/admin/direct-bids" class="active">직접 경매 관리</a>
+          <a href="/admin/instant-purchases">바로 구매 관리</a>
           <a href="/admin/all-bids">통합 경매 관리</a>
           <a href="/admin/bid-results">입찰 결과 & 정산</a>
           <a href="/admin/transactions">거래 내역 관리</a>
@@ -55,7 +56,10 @@
         <!-- 검색 + 필터 통합 영역 -->
         <div class="search-filter-bar">
           <div class="search-box">
-            <input type="text" id="searchInput" placeholder="상품ID, 제목, 브랜드, 유저ID 검색" />
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="상품ID, 제목, 브랜드, 유저ID 검색" />
             <button id="searchBtn" class="btn btn-search">검색</button>
             <button id="clearSearchBtn" class="btn btn-ghost">초기화</button>
           </div>
@@ -65,7 +69,9 @@
               <div class="filter-tab active" data-status="">전체</div>
               <div class="filter-tab" data-status="active">활성</div>
               <div class="filter-tab" data-status="completed">완료</div>
-              <div class="filter-tab" data-status="domestic_arrived">국내도착</div>
+              <div class="filter-tab" data-status="domestic_arrived">
+                국내도착
+              </div>
               <div class="filter-tab" data-status="processing">작업중</div>
               <div class="filter-tab" data-status="shipped">출고됨</div>
               <div class="filter-tab" data-status="cancelled">낙찰실패</div>
@@ -76,20 +82,34 @@
         <!-- 일괄 작업 (선택 시에만 표시) -->
         <div class="bulk-actions" id="bulkActionsBar">
           <div class="bulk-left">
-            <span id="bulkSelectionHint" class="bulk-selection-hint">선택 0건</span>
-            <select id="bulkStatusTarget" class="form-control form-control-sm bulk-status-target">
+            <span id="bulkSelectionHint" class="bulk-selection-hint"
+              >선택 0건</span
+            >
+            <select
+              id="bulkStatusTarget"
+              class="form-control form-control-sm bulk-status-target">
               <option value="completed">완료</option>
               <option value="domestic_arrived">국내도착</option>
               <option value="processing">작업중</option>
               <option value="shipped">출고됨</option>
               <option value="cancelled">낙찰 실패</option>
             </select>
-            <button id="bulkShipBtn" class="btn btn-sm" disabled>일괄 변경</button>
-            <button id="bulkMarkSubmittedBtn" class="btn btn-sm btn-secondary" disabled>반영됨 표시</button>
+            <button id="bulkShipBtn" class="btn btn-sm" disabled>
+              일괄 변경
+            </button>
+            <button
+              id="bulkMarkSubmittedBtn"
+              class="btn btn-sm btn-secondary"
+              disabled>
+              반영됨 표시
+            </button>
           </div>
         </div>
 
-        <div id="processingZoneSummary" class="processing-zone-summary" style="display: none">
+        <div
+          id="processingZoneSummary"
+          class="processing-zone-summary"
+          style="display: none">
           <div class="title">존별 현황</div>
           <div id="processingZoneGrid" class="processing-zone-grid"></div>
         </div>
@@ -121,18 +141,30 @@
             <div class="filter-group">
               <label>기간</label>
               <div class="quick-dates-pill">
-                <button type="button" class="btn-pill" data-range="today">오늘</button>
-                <button type="button" class="btn-pill" data-range="week">이번주</button>
-                <button type="button" class="btn-pill" data-range="month">이번달</button>
+                <button type="button" class="btn-pill" data-range="today">
+                  오늘
+                </button>
+                <button type="button" class="btn-pill" data-range="week">
+                  이번주
+                </button>
+                <button type="button" class="btn-pill" data-range="month">
+                  이번달
+                </button>
               </div>
             </div>
             <div class="filter-group">
               <label for="fromDate">시작일</label>
-              <input type="date" id="fromDate" class="form-control form-control-sm" />
+              <input
+                type="date"
+                id="fromDate"
+                class="form-control form-control-sm" />
             </div>
             <div class="filter-group">
               <label for="toDate">종료일</label>
-              <input type="date" id="toDate" class="form-control form-control-sm" />
+              <input
+                type="date"
+                id="toDate"
+                class="form-control form-control-sm" />
             </div>
             <div class="filter-group">
               <label for="pageSize">페이지당</label>
@@ -158,7 +190,9 @@
             </div>
             <div class="filter-actions">
               <button id="applyDateFilter" class="btn btn-sm">적용</button>
-              <button id="resetDateFilter" class="btn btn-sm btn-ghost">초기화</button>
+              <button id="resetDateFilter" class="btn btn-sm btn-ghost">
+                초기화
+              </button>
             </div>
           </div>
         </details>
@@ -492,23 +526,65 @@
         </div>
         <div class="modal-body live-detail-body">
           <div class="live-detail-left">
-            <div class="live-detail-main-image-wrap" id="directDetailMainImageWrap">
-              <button type="button" class="live-detail-nav prev" id="directDetailPrevBtn">&lt;</button>
-              <img id="directDetailMainImage" class="live-detail-main-image" src="/images/no-image.png" alt="상품 이미지" />
-              <button type="button" class="live-detail-nav next" id="directDetailNextBtn">&gt;</button>
+            <div
+              class="live-detail-main-image-wrap"
+              id="directDetailMainImageWrap">
+              <button
+                type="button"
+                class="live-detail-nav prev"
+                id="directDetailPrevBtn">
+                &lt;
+              </button>
+              <img
+                id="directDetailMainImage"
+                class="live-detail-main-image"
+                src="/images/no-image.png"
+                alt="상품 이미지" />
+              <button
+                type="button"
+                class="live-detail-nav next"
+                id="directDetailNextBtn">
+                &gt;
+              </button>
             </div>
             <div id="directDetailThumbs" class="live-detail-thumbs"></div>
           </div>
           <div class="live-detail-info">
-            <div class="live-detail-row"><strong>상품ID</strong><span id="directDetailItemId">-</span></div>
-            <div class="live-detail-row"><strong>제목</strong><span id="directDetailTitle">-</span></div>
-            <div class="live-detail-row"><strong>브랜드</strong><span id="directDetailBrand">-</span></div>
-            <div class="live-detail-row"><strong>카테고리</strong><span id="directDetailCategory">-</span></div>
-            <div class="live-detail-row"><strong>등급</strong><span id="directDetailRank">-</span></div>
-            <div class="live-detail-row"><strong>예정일시</strong><span id="directDetailScheduled">-</span></div>
-            <div class="live-detail-row"><strong>액세서리코드</strong><span id="directDetailAccessoryCode">-</span></div>
-            <div class="live-detail-row"><strong>설명</strong><span id="directDetailDescription">-</span></div>
-            <div class="live-detail-row"><strong>원본링크</strong><a id="directDetailOriginLink" href="#" target="_blank" rel="noopener noreferrer">열기</a></div>
+            <div class="live-detail-row">
+              <strong>상품ID</strong><span id="directDetailItemId">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>제목</strong><span id="directDetailTitle">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>브랜드</strong><span id="directDetailBrand">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>카테고리</strong><span id="directDetailCategory">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>등급</strong><span id="directDetailRank">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>예정일시</strong><span id="directDetailScheduled">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>액세서리코드</strong
+              ><span id="directDetailAccessoryCode">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>설명</strong><span id="directDetailDescription">-</span>
+            </div>
+            <div class="live-detail-row">
+              <strong>원본링크</strong
+              ><a
+                id="directDetailOriginLink"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                >열기</a
+              >
+            </div>
           </div>
         </div>
         <div class="modal-footer">

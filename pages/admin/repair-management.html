@@ -17,6 +17,7 @@
           <a href="/admin">대시보드</a>
           <a href="/admin/live-bids">현장 경매 관리</a>
           <a href="/admin/direct-bids">직접 경매 관리</a>
+          <a href="/admin/instant-purchases">바로 구매 관리</a>
           <a href="/admin/all-bids">통합 경매 관리</a>
           <a href="/admin/bid-results">입찰 결과 & 정산</a>
           <a href="/admin/transactions">거래 내역 관리</a>
@@ -44,9 +45,13 @@
           <div class="section-header">
             <h3>공통 검색</h3>
             <div class="toolbar">
-              <input id="searchInput" placeholder="내부바코드/회원사/상품명 검색" />
+              <input
+                id="searchInput"
+                placeholder="내부바코드/회원사/상품명 검색" />
               <button id="btnReload" class="btn btn-secondary">새로고침</button>
-              <button id="btnExportCsv" class="btn btn-secondary">CSV 내보내기</button>
+              <button id="btnExportCsv" class="btn btn-secondary">
+                CSV 내보내기
+              </button>
             </div>
           </div>
         </section>
@@ -55,41 +60,74 @@
           <div class="section-header">
             <h3>수선업체 관리(시트 연결)</h3>
             <div class="toolbar">
-              <button id="btnToggleVendorManagement" class="btn btn-secondary">펼치기</button>
-              <button id="btnAddVendor" type="button" class="btn btn-secondary">외주업체추가</button>
-              <button id="btnPushExternalBatch" class="btn btn-secondary">일괄 업데이트</button>
+              <button id="btnToggleVendorManagement" class="btn btn-secondary">
+                펼치기
+              </button>
+              <button id="btnAddVendor" type="button" class="btn btn-secondary">
+                외주업체추가
+              </button>
+              <button id="btnPushExternalBatch" class="btn btn-secondary">
+                일괄 업데이트
+              </button>
             </div>
           </div>
           <div id="vendorManagementBody" style="display: none">
             <p class="sheet-guide">
-              외부수선은 <strong>외주시트전송</strong> → 업체 회신 → <strong>외주시트동기화</strong>로 운영합니다.
-              내부수선도 <strong>내부시트전송</strong>으로 연결되며, 메인시트(<strong>수선_전체현황</strong>)는 수선관리 전체 단계(2~6) 건을,
-              별도 시트(<strong>수선_완료내역</strong>)는 완료 건 누적 이력으로 자동 갱신됩니다.
+              외부수선은 <strong>외주시트전송</strong> → 업체 회신 →
+              <strong>외주시트동기화</strong>로 운영합니다. 내부수선도
+              <strong>내부시트전송</strong>으로 연결되며,
+              메인시트(<strong>수선_전체현황</strong>)는 수선관리 전체 단계(2~6)
+              건을, 별도 시트(<strong>수선_완료내역</strong>)는 완료 건 누적
+              이력으로 자동 갱신됩니다.
               <br />
-              <strong>일괄 업데이트</strong>는 수선관리(DB) 기준으로 업체 시트와 집계 시트를 강제 동기화합니다.
+              <strong>일괄 업데이트</strong>는 수선관리(DB) 기준으로 업체 시트와
+              집계 시트를 강제 동기화합니다.
             </p>
             <div class="sheet-target-config" style="margin-bottom: 12px">
-              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px">
+              <div
+                style="
+                  display: flex;
+                  gap: 8px;
+                  flex-wrap: wrap;
+                  align-items: center;
+                  margin-bottom: 8px;
+                ">
                 <strong style="min-width: 120px">집계시트(전체현황)</strong>
                 <input
                   id="mainOverviewSheetUrl"
                   type="text"
                   placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..."
-                  style="flex: 1; min-width: 320px"
-                />
-                <button id="btnSaveMainOverviewSheet" class="btn btn-secondary">저장</button>
-                <button id="btnSyncMainOverviewSheet" class="btn btn-secondary">동기화</button>
+                  style="flex: 1; min-width: 320px" />
+                <button id="btnSaveMainOverviewSheet" class="btn btn-secondary">
+                  저장
+                </button>
+                <button id="btnSyncMainOverviewSheet" class="btn btn-secondary">
+                  동기화
+                </button>
               </div>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
+              <div
+                style="
+                  display: flex;
+                  gap: 8px;
+                  flex-wrap: wrap;
+                  align-items: center;
+                ">
                 <strong style="min-width: 120px">집계시트(완료내역)</strong>
                 <input
                   id="completedHistorySheetUrl"
                   type="text"
                   placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..."
-                  style="flex: 1; min-width: 320px"
-                />
-                <button id="btnSaveCompletedHistorySheet" class="btn btn-secondary">저장</button>
-                <button id="btnSyncCompletedHistorySheet" class="btn btn-secondary">동기화</button>
+                  style="flex: 1; min-width: 320px" />
+                <button
+                  id="btnSaveCompletedHistorySheet"
+                  class="btn btn-secondary">
+                  저장
+                </button>
+                <button
+                  id="btnSyncCompletedHistorySheet"
+                  class="btn btn-secondary">
+                  동기화
+                </button>
               </div>
             </div>
             <div class="table-wrap">
@@ -105,7 +143,11 @@
                   </tr>
                 </thead>
                 <tbody id="vendorsBody">
-                  <tr><td colspan="6" class="text-center">수선업체 정보를 불러오는 중입니다...</td></tr>
+                  <tr>
+                    <td colspan="6" class="text-center">
+                      수선업체 정보를 불러오는 중입니다...
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -131,7 +173,11 @@
                 </tr>
               </thead>
               <tbody id="domesticArrivalsBody">
-                <tr><td colspan="7" class="text-center">데이터를 불러오는 중입니다...</td></tr>
+                <tr>
+                  <td colspan="7" class="text-center">
+                    데이터를 불러오는 중입니다...
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -158,7 +204,11 @@
                 </tr>
               </thead>
               <tbody id="draftCasesBody">
-                <tr><td colspan="10" class="text-center">데이터를 불러오는 중입니다...</td></tr>
+                <tr>
+                  <td colspan="10" class="text-center">
+                    데이터를 불러오는 중입니다...
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -185,7 +235,11 @@
                 </tr>
               </thead>
               <tbody id="readyToSendCasesBody">
-                <tr><td colspan="10" class="text-center">데이터를 불러오는 중입니다...</td></tr>
+                <tr>
+                  <td colspan="10" class="text-center">
+                    데이터를 불러오는 중입니다...
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -211,7 +265,11 @@
                 </tr>
               </thead>
               <tbody id="proposedCasesBody">
-                <tr><td colspan="9" class="text-center">데이터를 불러오는 중입니다...</td></tr>
+                <tr>
+                  <td colspan="9" class="text-center">
+                    데이터를 불러오는 중입니다...
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -238,7 +296,11 @@
                 </tr>
               </thead>
               <tbody id="inProgressCasesBody">
-                <tr><td colspan="10" class="text-center">데이터를 불러오는 중입니다...</td></tr>
+                <tr>
+                  <td colspan="10" class="text-center">
+                    데이터를 불러오는 중입니다...
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -264,7 +326,11 @@
                 </tr>
               </thead>
               <tbody id="completedCasesBody">
-                <tr><td colspan="9" class="text-center">데이터를 불러오는 중입니다...</td></tr>
+                <tr>
+                  <td colspan="9" class="text-center">
+                    데이터를 불러오는 중입니다...
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -280,52 +346,91 @@
         </div>
         <div class="modal-body">
           <div class="modal-item-header">
-            <img id="metaImage" class="modal-item-image" src="/images/no-image.png" alt="상품 사진" />
+            <img
+              id="metaImage"
+              class="modal-item-image"
+              src="/images/no-image.png"
+              alt="상품 사진" />
             <div class="meta-grid">
-              <div><strong>내부바코드</strong><p id="metaBarcode">-</p></div>
-              <div><strong>회원사</strong><p id="metaMember">-</p></div>
-              <div><strong>상품명</strong><p id="metaTitle">-</p></div>
-              <div><strong>예정일시</strong><p id="metaScheduledAt">-</p></div>
+              <div>
+                <strong>내부바코드</strong>
+                <p id="metaBarcode">-</p>
+              </div>
+              <div>
+                <strong>회원사</strong>
+                <p id="metaMember">-</p>
+              </div>
+              <div>
+                <strong>상품명</strong>
+                <p id="metaTitle">-</p>
+              </div>
+              <div>
+                <strong>예정일시</strong>
+                <p id="metaScheduledAt">-</p>
+              </div>
             </div>
           </div>
 
           <div class="form-grid">
-            <label>처리구분
+            <label
+              >처리구분
               <select id="decisionType">
                 <option value="INTERNAL">내부</option>
                 <option value="EXTERNAL">외부</option>
               </select>
             </label>
-            <label id="vendorField">외주업체
+            <label id="vendorField"
+              >외주업체
               <div class="inline-row">
                 <select id="vendorName"></select>
               </div>
             </label>
-            <label id="amountField">견적금액(원)
-              <input id="repairAmount" type="number" min="0" step="100" placeholder="예: 35000" />
+            <label id="amountField"
+              >견적금액(원)
+              <input
+                id="repairAmount"
+                type="number"
+                min="0"
+                step="100"
+                placeholder="예: 35000" />
             </label>
-            <label id="etaField">예상일
+            <label id="etaField"
+              >예상일
               <input id="repairEta" placeholder="예: 3일 / 2026-03-01" />
             </label>
-            <label id="internalNoteField">내부메모
+            <label id="internalNoteField"
+              >내부메모
               <input id="internalNote" placeholder="내부 전용 메모" />
             </label>
           </div>
 
-          <p id="externalGuide" class="sheet-guide" style="display: none; margin-top: 0">
-            외부수선은 금액을 직접 입력하지 않습니다. 외주시트전송 후 업체가 입력한 견적을 외주시트동기화로 반영하세요.
+          <p
+            id="externalGuide"
+            class="sheet-guide"
+            style="display: none; margin-top: 0">
+            외부수선은 금액을 직접 입력하지 않습니다. 외주시트전송 후 업체가
+            입력한 견적을 외주시트동기화로 반영하세요.
           </p>
 
-          <label>수선요청내용
-            <textarea id="repairNote" rows="4" placeholder="수선 내용을 입력하세요"></textarea>
+          <label
+            >수선요청내용
+            <textarea
+              id="repairNote"
+              rows="4"
+              placeholder="수선 내용을 입력하세요"></textarea>
           </label>
-          <label>발송템플릿(복붙)
+          <label
+            >발송템플릿(복붙)
             <textarea id="proposalText" rows="8" readonly></textarea>
           </label>
         </div>
         <div class="modal-footer">
-          <button id="btnCopyTemplate" type="button" class="btn btn-secondary">템플릿복사</button>
-          <button id="btnSaveDraft" type="button" class="btn btn-secondary">수선정보저장</button>
+          <button id="btnCopyTemplate" type="button" class="btn btn-secondary">
+            템플릿복사
+          </button>
+          <button id="btnSaveDraft" type="button" class="btn btn-secondary">
+            수선정보저장
+          </button>
         </div>
       </div>
     </div>
@@ -334,27 +439,71 @@
       <div class="modal-card repair-detail-modal-card">
         <div class="modal-header">
           <h3>상품 상세</h3>
-          <button id="btnCloseRepairDetailModal" class="btn btn-secondary">닫기</button>
+          <button id="btnCloseRepairDetailModal" class="btn btn-secondary">
+            닫기
+          </button>
         </div>
         <div class="modal-body repair-detail-body">
           <div class="repair-detail-left">
-            <div class="repair-detail-main-image-wrap" id="repairDetailMainImageWrap">
-              <button type="button" class="repair-detail-nav prev" id="repairDetailPrevBtn">&lt;</button>
-              <img id="repairDetailMainImage" class="repair-detail-main-image" src="/images/no-image.png" alt="상품 이미지" />
-              <button type="button" class="repair-detail-nav next" id="repairDetailNextBtn">&gt;</button>
+            <div
+              class="repair-detail-main-image-wrap"
+              id="repairDetailMainImageWrap">
+              <button
+                type="button"
+                class="repair-detail-nav prev"
+                id="repairDetailPrevBtn">
+                &lt;
+              </button>
+              <img
+                id="repairDetailMainImage"
+                class="repair-detail-main-image"
+                src="/images/no-image.png"
+                alt="상품 이미지" />
+              <button
+                type="button"
+                class="repair-detail-nav next"
+                id="repairDetailNextBtn">
+                &gt;
+              </button>
             </div>
             <div id="repairDetailThumbs" class="repair-detail-thumbs"></div>
           </div>
           <div class="repair-detail-info">
-            <div class="repair-detail-row"><strong>상품ID</strong><span id="repairDetailItemId">-</span></div>
-            <div class="repair-detail-row"><strong>제목</strong><span id="repairDetailTitle">-</span></div>
-            <div class="repair-detail-row"><strong>브랜드</strong><span id="repairDetailBrand">-</span></div>
-            <div class="repair-detail-row"><strong>카테고리</strong><span id="repairDetailCategory">-</span></div>
-            <div class="repair-detail-row"><strong>등급</strong><span id="repairDetailRank">-</span></div>
-            <div class="repair-detail-row"><strong>예정일시</strong><span id="repairDetailScheduled">-</span></div>
-            <div class="repair-detail-row"><strong>액세서리코드</strong><span id="repairDetailAccessoryCode">-</span></div>
-            <div class="repair-detail-row"><strong>설명</strong><span id="repairDetailDescription">-</span></div>
-            <div class="repair-detail-row"><strong>원본링크</strong><a id="repairDetailOriginLink" href="#" target="_blank" rel="noopener noreferrer">열기</a></div>
+            <div class="repair-detail-row">
+              <strong>상품ID</strong><span id="repairDetailItemId">-</span>
+            </div>
+            <div class="repair-detail-row">
+              <strong>제목</strong><span id="repairDetailTitle">-</span>
+            </div>
+            <div class="repair-detail-row">
+              <strong>브랜드</strong><span id="repairDetailBrand">-</span>
+            </div>
+            <div class="repair-detail-row">
+              <strong>카테고리</strong><span id="repairDetailCategory">-</span>
+            </div>
+            <div class="repair-detail-row">
+              <strong>등급</strong><span id="repairDetailRank">-</span>
+            </div>
+            <div class="repair-detail-row">
+              <strong>예정일시</strong><span id="repairDetailScheduled">-</span>
+            </div>
+            <div class="repair-detail-row">
+              <strong>액세서리코드</strong
+              ><span id="repairDetailAccessoryCode">-</span>
+            </div>
+            <div class="repair-detail-row">
+              <strong>설명</strong><span id="repairDetailDescription">-</span>
+            </div>
+            <div class="repair-detail-row">
+              <strong>원본링크</strong
+              ><a
+                id="repairDetailOriginLink"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                >열기</a
+              >
+            </div>
           </div>
         </div>
       </div>
