@@ -342,7 +342,7 @@ router.get("/", async (req, res) => {
           "FIELD(ci.rank, 'N', 'S', 'A', 'AB', 'B', 'BC', 'C', 'D', 'E', 'F')";
         break;
       case "scheduled_date":
-        orderByClause = "ci.scheduled_date";
+        orderByClause = "ci.scheduled_date IS NULL, ci.scheduled_date";
         break;
       case "starting_price":
         // MariaDB 호환 숫자 변환

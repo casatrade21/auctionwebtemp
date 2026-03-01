@@ -200,11 +200,14 @@ async function syncFilterSettingsToItems() {
           AND fs2.filter_value = ci.category 
           AND fs2.is_enabled = 1
         )
-        AND EXISTS (
-          SELECT 1 FROM filter_settings fs3 
-          WHERE fs3.filter_type = 'date' 
-          AND fs3.filter_value = DATE(ci.scheduled_date)
-          AND fs3.is_enabled = 1
+        AND (
+          ci.bid_type = 'instant'
+          OR EXISTS (
+            SELECT 1 FROM filter_settings fs3 
+            WHERE fs3.filter_type = 'date' 
+            AND fs3.filter_value = DATE(ci.scheduled_date)
+            AND fs3.is_enabled = 1
+          )
         )
         THEN 1 
         ELSE 0 
