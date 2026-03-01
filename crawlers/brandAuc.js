@@ -713,11 +713,22 @@ class BrandAucCrawler extends AxiosCrawler {
         typeof item.additional_info === "string"
           ? JSON.parse(item.additional_info)
           : item.additional_info || {};
-      const kaisaiKaisu = additionalInfo.kaisaiKaisu;
-      const kaijoCd = additionalInfo.kaijoCd || 1;
 
-      // 상세 정보 URL 구성 (올바른 kaisaiKaisu 사용)
-      const detailUrl = `https://u.brand-auc.com/api/v1/auction/auctionItems/bag/${kaijoCd}/${kaisaiKaisu}/${itemId}/B02-01`;
+      // bid_type에 따라 상세 API URL 결정
+      let detailUrl;
+      if (item.bid_type === "instant") {
+        // instant(바로 구매): buyItems API 사용 (invTorokuBng 기반)
+        const invTorokuBng = additionalInfo.invTorokuBng;
+        if (!invTorokuBng) {
+          throw new Error(`Missing invTorokuBng for instant item ${itemId}`);
+        }
+        detailUrl = `https://u.brand-auc.com/api/v1/shops/buyItems/bag/${invTorokuBng}/false/B02-01`;
+      } else {
+        // live/direct: auctionItems API 사용 (kaijoCd/kaisaiKaisu 기반)
+        const kaisaiKaisu = additionalInfo.kaisaiKaisu;
+        const kaijoCd = additionalInfo.kaijoCd || 1;
+        detailUrl = `https://u.brand-auc.com/api/v1/auction/auctionItems/bag/${kaijoCd}/${kaisaiKaisu}/${itemId}/B02-01`;
+      }
 
       // 상세 정보 요청
       const response = await clientInfo.client.get(detailUrl, {
@@ -735,14 +746,17 @@ class BrandAucCrawler extends AxiosCrawler {
 
       const detail = response.data;
 
-      // 이미지 URL 목록 처리
-      const images = [...detail.fileList, ...detail.fileListAdmin] || [];
+      // 이미지 URL 목록 처리 (null 값 필터링)
+      const images = [
+        ...(detail.fileList || []),
+        ...(detail.fileListAdmin || []),
+      ].filter(Boolean);
       const formattedImages = images.map((url) =>
         url.replace(/(brand_img\/)(\d+)/, "$17"),
       );
 
       // 상품 상태 메모 처리
-      const bikoList = detail.bikoList || [];
+      const bikoList = (detail.bikoList || []).filter((v) => v && v.trim());
       let description = bikoList.join("\n") || "-";
 
       // 부속품 정보 처리
@@ -759,15 +773,21 @@ class BrandAucCrawler extends AxiosCrawler {
         accessoryParts.push(`열쇠: ${detail.kanadeKey}`);
       if (detail.seal && detail.seal !== "なし")
         accessoryParts.push(`태그: ${detail.seal}`);
-      if (detail.shuppinBiko2List && detail.shuppinBiko2List.length > 0)
-        accessoryParts.push(`기타: ${detail.shuppinBiko2List.join(", ")}`);
+
+      // shuppinBiko2List + shuppinBikoList 통합 (빈 값 제외)
+      const extraNotes = [
+        ...(detail.shuppinBiko2List || []),
+        ...(detail.shuppinBikoList || []),
+      ].filter((v) => v && v.trim());
+      if (extraNotes.length > 0)
+        accessoryParts.push(`기타: ${extraNotes.join(", ")}`);
 
       const accessoryCode = accessoryParts.join(", ") || "";
 
       return {
         additional_images:
           formattedImages.length > 0 ? JSON.stringify(formattedImages) : null,
-        description: description + accessoryCode,
+        description: description + (accessoryCode ? "\n" + accessoryCode : ""),
         accessory_code: "",
       };
     } catch (error) {
