@@ -44,6 +44,7 @@ const productPageConfig = {
     wishlist: [],
     liveBidData: [],
     directBidData: [],
+    instantPurchaseData: [],
     currentData: [],
     images: [],
     currentImageIndex: 0,
@@ -349,7 +350,11 @@ window.ProductRenderer = (function () {
         const bidInfo =
           item.bid_type === "live"
             ? state.liveBidData.find((b) => b.item_id == item.item_id)
-            : state.directBidData.find((b) => b.item_id == item.item_id);
+            : item.bid_type === "instant"
+              ? state.instantPurchaseData?.find(
+                  (b) => b.item_id == item.item_id,
+                )
+              : state.directBidData.find((b) => b.item_id == item.item_id);
 
         window.TooltipManager.processTooltips(
           card,
@@ -421,6 +426,23 @@ window.ProductRenderer = (function () {
       return;
     }
 
+    // instant(바로 구매)는 입찰 섹션 불필요 — 구매 완료 정보만 표시
+    if (item.bid_type === "instant") {
+      const state = window.ProductListController.getState();
+      const purchaseInfo = state.instantPurchaseData?.find(
+        (b) => b.item_id == item.item_id,
+      );
+      if (purchaseInfo) {
+        bidSection.innerHTML = window.BidManager.getBidInfoForCard(
+          purchaseInfo,
+          item,
+        );
+      } else {
+        bidSection.innerHTML = "";
+      }
+      return;
+    }
+
     if (!window.BidManager) {
       console.error("BidManager가 로드되지 않았습니다");
       return;
@@ -466,7 +488,13 @@ window.ProductRenderer = (function () {
    */
   function setupTimer(card, item) {
     const timerElement = card.querySelector(".bid-timer");
-    if (!timerElement || !item.scheduled_date) return;
+    if (!timerElement) return;
+
+    // instant(바로 구매)는 타이머 불필요
+    if (item.bid_type === "instant" || !item.scheduled_date) {
+      timerElement.remove();
+      return;
+    }
 
     // 타이머 초기 설정
     updateTimer(timerElement, item);
@@ -567,7 +595,9 @@ window.ProductRenderer = (function () {
       ".info-cell:nth-child(2) .info-label",
     );
     if (secondCellLabel) {
-      if (item.bid_type === "direct") {
+      if (item.bid_type === "instant") {
+        secondCellLabel.textContent = "구매가";
+      } else if (item.bid_type === "direct") {
         secondCellLabel.textContent = "실시간";
       } else if (item.bid_type === "live") {
         secondCellLabel.textContent = "시작 금액";
@@ -579,7 +609,9 @@ window.ProductRenderer = (function () {
       ".info-cell:nth-child(3) .info-label",
     );
     if (thirdCellLabel) {
-      if (item.bid_type === "direct") {
+      if (item.bid_type === "instant") {
+        thirdCellLabel.textContent = "상태";
+      } else if (item.bid_type === "direct") {
         thirdCellLabel.textContent = "나의 입찰";
       } else if (item.bid_type === "live") {
         thirdCellLabel.textContent = "2차 제안";
@@ -602,6 +634,29 @@ window.ProductRenderer = (function () {
       priceDetailEl.textContent = `${cleanNumberFormat(
         calculateTotalPrice(live_price, item.auc_num, item.category),
       )}원`;
+    }
+
+    // instant(바로 구매)인 경우 가격 표시 방식 변경
+    if (item.bid_type === "instant") {
+      if (priceValueEl) {
+        priceValueEl.innerHTML = `${cleanNumberFormat(item.starting_price || 0)}¥`;
+      }
+      if (priceDetailEl && item.starting_price) {
+        priceDetailEl.textContent = `${cleanNumberFormat(
+          calculateTotalPrice(item.starting_price, item.auc_num, item.category),
+        )}원`;
+      }
+      // 세 번째 칸: 구매 상태 표시
+      const thirdCellValue = card.querySelector(
+        ".info-cell:nth-child(3) .info-value",
+      );
+      if (thirdCellValue) {
+        const instantInfo = state.instantPurchaseData?.find(
+          (b) => b.item_id == item.item_id,
+        );
+        thirdCellValue.textContent = instantInfo ? "구매완료" : "구매가능";
+      }
+      return;
     }
 
     // 세 번째 칸 (입찰/제안 정보) 업데이트
@@ -787,7 +842,26 @@ function initializeBidInfo(itemId, item = null) {
   const state = window.ProductListController.getState();
 
   // 경매 타입에 따라 다른 입찰 섹션 표시 (모달에서는 타이머 표시)
-  if (item.bid_type === "direct") {
+  if (item.bid_type === "instant") {
+    // 바로 구매: 구매가 + 관부가세 포함 금액 표시
+    const purchaseInfo = state.instantPurchaseData?.find(
+      (b) => b.item_id == itemId,
+    );
+    const price = item.starting_price || 0;
+    bidSection.innerHTML = `
+      <div class="instant-purchase-info">
+        <div class="real-time-price">
+          <p>구매가: ${cleanNumberFormat(price)} ¥</p>
+          <div class="price-details-container">
+            관부가세 포함 ${cleanNumberFormat(
+              calculateTotalPrice(price, item.auc_num, item.category),
+            )}원
+          </div>
+        </div>
+        ${purchaseInfo ? '<div class="my-bid-price"><span class="price-label">구매완료</span></div>' : ""}
+      </div>
+    `;
+  } else if (item.bid_type === "direct") {
     const directBidInfo = state.directBidData.find((b) => b.item_id == itemId);
     bidSection.innerHTML = window.BidManager.getDirectBidSectionHTML(
       directBidInfo,
@@ -812,7 +886,9 @@ function initializeBidInfo(itemId, item = null) {
       const bidInfo =
         item.bid_type === "live"
           ? state.liveBidData.find((b) => b.item_id == itemId)
-          : state.directBidData.find((b) => b.item_id == itemId);
+          : item.bid_type === "instant"
+            ? state.instantPurchaseData?.find((b) => b.item_id == itemId)
+            : state.directBidData.find((b) => b.item_id == itemId);
 
       const modal = document.querySelector(".modal-content");
       window.TooltipManager.processTooltips(

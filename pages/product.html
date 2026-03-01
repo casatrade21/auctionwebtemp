@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -181,6 +181,13 @@
                 <input type="checkbox" id="auction-type-live" value="live" />
                 <label for="auction-type-live">현장 경매</label>
               </div>
+              <div class="filter-item">
+                <input
+                  type="checkbox"
+                  id="auction-type-instant"
+                  value="instant" />
+                <label for="auction-type-instant">바로 구매</label>
+              </div>
             </div>
           </div>
 
@@ -261,7 +268,7 @@
         </div>
 
         <div class="bid-guide-notice auth-authenticated">
-          <button class="btn" onclick="window.location.href='/bidGuidePage'">
+          <button class="btn" onclick="window.location.href = '/bidGuidePage'">
             회원 전용 입찰 전 안내 사항 (필독)
           </button>
         </div>
@@ -453,7 +460,7 @@
         window,
         document,
         "script",
-        "https://connect.facebook.net/en_US/fbevents.js"
+        "https://connect.facebook.net/en_US/fbevents.js",
       );
       fbq("init", "3072535019552512");
       fbq("track", "PageView");

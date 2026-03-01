@@ -249,12 +249,17 @@ window.ProductListController = (function () {
     if (config.features.auctionTypes) {
       const liveCheckbox = document.getElementById("auction-type-live");
       const directCheckbox = document.getElementById("auction-type-direct");
+      const instantCheckbox = document.getElementById("auction-type-instant");
 
       if (liveCheckbox) {
         liveCheckbox.checked = state.selectedAuctionTypes.includes("live");
       }
       if (directCheckbox) {
         directCheckbox.checked = state.selectedAuctionTypes.includes("direct");
+      }
+      if (instantCheckbox) {
+        instantCheckbox.checked =
+          state.selectedAuctionTypes.includes("instant");
       }
     }
 
@@ -606,6 +611,7 @@ window.ProductListController = (function () {
   function processBidData(data) {
     state.liveBidData = [];
     state.directBidData = [];
+    state.instantPurchaseData = [];
 
     data.data.forEach((item) => {
       if (item.bids) {
@@ -615,12 +621,19 @@ window.ProductListController = (function () {
         if (item.bids.direct) {
           state.directBidData.push(item.bids.direct);
         }
+        if (item.bids.instant) {
+          state.instantPurchaseData.push(item.bids.instant);
+        }
       }
     });
 
     // BidManager에 데이터 전달
     if (window.BidManager) {
-      window.BidManager.updateBidData(state.liveBidData, state.directBidData);
+      window.BidManager.updateBidData(
+        state.liveBidData,
+        state.directBidData,
+        state.instantPurchaseData,
+      );
       window.BidManager.updateCurrentData(data.data);
     }
   }
@@ -719,7 +732,12 @@ window.ProductListController = (function () {
       // 특수 필드 처리
       switch (field) {
         case "bid_type_text":
-          value = item.bid_type === "direct" ? "직접" : "현장";
+          value =
+            item.bid_type === "direct"
+              ? "직접"
+              : item.bid_type === "instant"
+                ? "바로구매"
+                : "현장";
           break;
         case "rank":
           value = item.rank || "N";

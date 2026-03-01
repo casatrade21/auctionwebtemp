@@ -641,11 +641,9 @@ class BrandAucCrawler extends AxiosCrawler {
       }
       scheduled_date = original_scheduled_date;
     } else if (bidType === "instant") {
-      // instant 타입은 아이템별 kaisaiYmd 사용 (시간 필터링 없음)
-      original_scheduled_date = this.extractDate(
-        this.convertToKST(item.kaisaiYmd),
-      );
-      scheduled_date = original_scheduled_date;
+      // instant 타입은 날짜 없음 (바로 구매이므로 경매 일정 불필요)
+      original_scheduled_date = null;
+      scheduled_date = null;
     } else {
       // live 타입은 아이템별 값 사용
       original_scheduled_date = this.extractDate(
