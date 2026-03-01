@@ -296,6 +296,13 @@ select {
   padding: 8px;
 }
 
+/* Instant Purchase Product Card */
+.product-card[data-bid-type="instant"] .product-header {
+  background-color: var(--orange-dark);
+  color: white;
+  padding: 8px;
+}
+
 .product-brand {
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -380,6 +387,10 @@ select {
   color: var(--green-dark);
 }
 
+.product-card[data-bid-type="instant"] .auction-number {
+  color: var(--orange-dark);
+}
+
 .auction-number span {
   font-size: 10px;
   margin-left: 1px;
@@ -401,6 +412,10 @@ select {
 
 .product-card[data-bid-type="direct"] .auction-type-circle {
   color: var(--green-dark);
+}
+
+.product-card[data-bid-type="instant"] .auction-type-circle {
+  color: var(--orange-dark);
 }
 
 .auction-type {
@@ -733,6 +748,11 @@ select {
   padding-left: var(--spacing-sm);
 }
 
+.modal-content .bid-info.instant {
+  border-left: 3px solid var(--orange-dark);
+  padding-left: var(--spacing-sm);
+}
+
 /* Bid Input */
 .bid-input-container {
   margin-top: 10px;
@@ -752,6 +772,253 @@ select {
 }
 
 /* Bid 컴포넌트는 common.css에서 관리 */
+
+/* ============================================================
+   Instant Purchase (바로 구매) Styles
+   ============================================================ */
+
+/* 카드 바로구매 버튼 */
+.instant-purchase-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background-color: var(--orange-dark);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.instant-purchase-btn:hover {
+  background-color: #b34a00;
+  transform: translateY(-1px);
+}
+
+.instant-purchase-btn:active {
+  transform: translateY(0);
+}
+
+.instant-purchase-btn:disabled {
+  background-color: #999;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.instant-purchase-btn.loading {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* 카드 바로구매 가격 컨테이너 */
+.instant-purchase-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.instant-purchase-card .instant-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 2px;
+}
+
+.instant-purchase-card .instant-price-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.instant-purchase-card .instant-price-yen {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.instant-purchase-card .instant-price-krw {
+  font-size: 11px;
+  color: var(--error-color);
+  text-align: right;
+  padding: 0 2px;
+}
+
+/* 구매완료 배지 */
+.instant-purchased-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background-color: #f0f7f0;
+  border: 1px solid #a8d5a8;
+  border-radius: var(--border-radius-sm);
+  color: #2e7d32;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.instant-purchased-badge::before {
+  content: "✓";
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* 모달 바로구매 섹션 */
+.instant-purchase-modal {
+  padding: var(--spacing-sm);
+}
+
+.instant-purchase-modal .instant-price-display {
+  margin-bottom: var(--spacing-sm);
+}
+
+.instant-purchase-modal .instant-price-main {
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.instant-purchase-modal .instant-price-sub {
+  font-size: var(--font-size-sm);
+  color: var(--error-color);
+}
+
+.instant-purchase-modal .instant-purchase-btn {
+  padding: 12px 20px;
+  font-size: var(--font-size-md);
+}
+
+.instant-purchase-modal .instant-status-info {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background-color: #f8f9fa;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* 구매 확인 오버레이 */
+.instant-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+.instant-confirm-dialog {
+  background: white;
+  border-radius: var(--border-radius-md);
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.2s ease;
+}
+
+.instant-confirm-dialog h3 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  color: #333;
+}
+
+.instant-confirm-dialog .confirm-price-info {
+  background-color: #fff8f0;
+  border: 1px solid #ffe0c0;
+  border-radius: var(--border-radius-sm);
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.instant-confirm-dialog .confirm-price-info p {
+  margin: 4px 0;
+  font-size: var(--font-size-sm);
+}
+
+.instant-confirm-dialog .confirm-price-info .confirm-price-main {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--orange-dark);
+}
+
+.instant-confirm-dialog .confirm-price-info .confirm-price-krw {
+  color: var(--error-color);
+  font-size: var(--font-size-sm);
+}
+
+.instant-confirm-dialog .confirm-warning {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 16px;
+}
+
+.instant-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.instant-confirm-actions button {
+  padding: 10px 20px;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background-color var(--transition-fast);
+}
+
+.instant-confirm-actions .confirm-cancel {
+  background-color: #f0f0f0;
+  color: #666;
+}
+
+.instant-confirm-actions .confirm-cancel:hover {
+  background-color: #e0e0e0;
+}
+
+.instant-confirm-actions .confirm-buy {
+  background-color: var(--orange-dark);
+  color: white;
+}
+
+.instant-confirm-actions .confirm-buy:hover {
+  background-color: #b34a00;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
 
 /* Pagination */
 .pagination {
@@ -2083,7 +2350,8 @@ select {
   cursor: pointer;
   z-index: 999;
 
-  transition: background-color var(--transition-fast),
+  transition:
+    background-color var(--transition-fast),
     box-shadow var(--transition-fast);
   border: none;
   outline: none;
@@ -2196,7 +2464,8 @@ select {
   border-radius: var(--border-radius-sm);
   border: none;
   cursor: pointer;
-  transition: background-color var(--transition-fast),
+  transition:
+    background-color var(--transition-fast),
     box-shadow var(--transition-fast);
   letter-spacing: -0.2px;
 }

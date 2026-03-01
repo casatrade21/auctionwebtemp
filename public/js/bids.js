@@ -1060,6 +1060,132 @@ window.BidManager = (function () {
   }
 
   /**
+   * 바로 구매 확인 다이얼로그 표시
+   */
+  function showInstantPurchaseConfirm(itemId, aucNum, item) {
+    const price = item.starting_price || 0;
+    const totalKrw = calculateTotalPrice(price, item.auc_num, item.category);
+
+    const overlay = document.createElement("div");
+    overlay.className = "instant-confirm-overlay";
+    overlay.innerHTML = `
+      <div class="instant-confirm-dialog">
+        <h3>바로 구매 확인</h3>
+        <div class="confirm-price-info">
+          <p><strong>${item.brand || ""}</strong> ${item.title || ""}</p>
+          <p class="confirm-price-main">${cleanNumberFormat(price)}¥</p>
+          <p class="confirm-price-krw">관부가세 포함 ${cleanNumberFormat(totalKrw)}원</p>
+        </div>
+        <p class="confirm-warning">구매 확인 후 즉시 결제가 진행됩니다. 취소가 불가능할 수 있습니다.</p>
+        <div class="instant-confirm-actions">
+          <button class="confirm-cancel">취소</button>
+          <button class="confirm-buy">구매하기</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // 취소 버튼
+    overlay.querySelector(".confirm-cancel").addEventListener("click", () => {
+      overlay.remove();
+    });
+
+    // 오버레이 배경 클릭으로 취소
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    // 구매 확인 버튼
+    overlay
+      .querySelector(".confirm-buy")
+      .addEventListener("click", async () => {
+        const buyBtn = overlay.querySelector(".confirm-buy");
+        buyBtn.textContent = "처리 중...";
+        buyBtn.disabled = true;
+        overlay.querySelector(".confirm-cancel").disabled = true;
+
+        try {
+          await executeInstantPurchase(itemId, aucNum);
+          overlay.remove();
+        } catch (error) {
+          buyBtn.textContent = "구매하기";
+          buyBtn.disabled = false;
+          overlay.querySelector(".confirm-cancel").disabled = false;
+        }
+      });
+  }
+
+  /**
+   * 바로 구매 실행
+   */
+  async function executeInstantPurchase(itemId, aucNum) {
+    const response = await API.fetchAPI("/instant-purchases", {
+      method: "POST",
+      body: JSON.stringify({ itemId, aucNum }),
+    });
+
+    alert("바로 구매가 완료되었습니다.");
+
+    // 데이터 새로고침
+    if (typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(
+        new CustomEvent("bidSuccess", { detail: { itemId, type: "instant" } }),
+      );
+    }
+
+    return response;
+  }
+
+  /**
+   * 바로 구매 처리 (카드/모달에서 호출)
+   */
+  async function handleInstantPurchase(itemId, aucNum) {
+    if (!window.AuthManager?.isAuthenticated()) {
+      if (window.LoginRequiredModal) {
+        window.LoginRequiredModal.show();
+      } else {
+        alert("구매하려면 로그인이 필요합니다.");
+      }
+      return;
+    }
+
+    // 중복 구매 방지
+    const purchaseKey = `instant-${itemId}`;
+    if (_state.submittingBids.has(purchaseKey)) {
+      console.log("구매 처리가 이미 진행 중입니다.");
+      return;
+    }
+
+    const item = _state.currentData.find(
+      (i) => i.item_id === itemId || i.item_id == itemId,
+    );
+    if (!item) {
+      alert("상품 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    // 이미 구매한 상품인지 확인
+    const existingPurchase = _state.instantPurchaseData?.find(
+      (b) => b.item_id == itemId,
+    );
+    if (existingPurchase) {
+      alert("이미 구매한 상품입니다.");
+      return;
+    }
+
+    _state.submittingBids.add(purchaseKey);
+
+    try {
+      showInstantPurchaseConfirm(itemId, aucNum, item);
+    } catch (error) {
+      alert(`구매 처리 중 오류가 발생했습니다: ${error.message}`);
+    } finally {
+      _state.submittingBids.delete(purchaseKey);
+    }
+  }
+
+  /**
    * 입찰 데이터 업데이트
    */
   function updateBidData(liveBids, directBids, instantPurchases) {
@@ -1110,6 +1236,7 @@ window.BidManager = (function () {
     // 입찰 처리 함수
     handleLiveBidSubmit,
     handleDirectBidSubmit,
+    handleInstantPurchase,
     setStarAuctionMinimumBid,
     quickAddBid,
 

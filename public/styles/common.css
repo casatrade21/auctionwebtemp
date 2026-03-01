@@ -17,6 +17,7 @@
 
   --blue-dark: #003087; /* 짙은 파란색 - 현장경매 배경 */
   --green-dark: #006633; /* 짙은 녹색 - 직접경매 배경 */
+  --orange-dark: #cc5500; /* 짙은 오렌지 - 바로구매 배경 */
 
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -42,8 +43,9 @@
   --modal-width: 90%;
   --modal-max-width: 1200px;
 
-  --font-primary: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
-    Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR",
+  --font-primary:
+    "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto,
+    "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR",
     "Malgun Gothic", sans-serif;
 
   /* ⭐ Z-INDEX 계층 구조 (간단한 관리) */

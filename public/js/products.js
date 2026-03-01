@@ -426,19 +426,35 @@ window.ProductRenderer = (function () {
       return;
     }
 
-    // instant(바로 구매)는 입찰 섹션 불필요 — 구매 완료 정보만 표시
+    // instant(바로 구매)는 구매 버튼 또는 구매완료 표시
     if (item.bid_type === "instant") {
       const state = window.ProductListController.getState();
       const purchaseInfo = state.instantPurchaseData?.find(
         (b) => b.item_id == item.item_id,
       );
       if (purchaseInfo) {
-        bidSection.innerHTML = window.BidManager.getBidInfoForCard(
-          purchaseInfo,
-          item,
-        );
+        // 이미 구매 완료
+        bidSection.innerHTML = `<div class="instant-purchased-badge">구매완료</div>`;
       } else {
-        bidSection.innerHTML = "";
+        // 구매 가능: 가격 표시 + 구매 버튼
+        const price = item.starting_price || 0;
+        const totalKrw = calculateTotalPrice(
+          price,
+          item.auc_num,
+          item.category,
+        );
+        bidSection.innerHTML = `
+          <div class="instant-purchase-card">
+            <div class="instant-price-row">
+              <span class="instant-price-label">구매가</span>
+              <span class="instant-price-yen">${cleanNumberFormat(price)}¥</span>
+            </div>
+            <div class="instant-price-krw">관부가세 포함 ${cleanNumberFormat(totalKrw)}원</div>
+            <button class="instant-purchase-btn"
+              onclick="event.stopPropagation(); window.BidManager.handleInstantPurchase('${item.item_id}', ${item.auc_num})"
+            >바로 구매하기</button>
+          </div>
+        `;
       }
       return;
     }
@@ -843,24 +859,49 @@ function initializeBidInfo(itemId, item = null) {
 
   // 경매 타입에 따라 다른 입찰 섹션 표시 (모달에서는 타이머 표시)
   if (item.bid_type === "instant") {
-    // 바로 구매: 구매가 + 관부가세 포함 금액 표시
+    // 바로 구매: 가격 표시 + 구매 버튼 또는 구매완료
     const purchaseInfo = state.instantPurchaseData?.find(
       (b) => b.item_id == itemId,
     );
     const price = item.starting_price || 0;
-    bidSection.innerHTML = `
-      <div class="instant-purchase-info">
-        <div class="real-time-price">
-          <p>구매가: ${cleanNumberFormat(price)} ¥</p>
-          <div class="price-details-container">
-            관부가세 포함 ${cleanNumberFormat(
-              calculateTotalPrice(price, item.auc_num, item.category),
-            )}원
+    const totalKrw = calculateTotalPrice(price, item.auc_num, item.category);
+
+    if (purchaseInfo) {
+      // 구매 완료 상태
+      const purchasePrice =
+        purchaseInfo.purchase_price || purchaseInfo.winning_price || price;
+      bidSection.innerHTML = `
+        <div class="bid-info instant">
+          <div class="instant-purchase-modal">
+            <div class="instant-price-display">
+              <div class="instant-price-main">${cleanNumberFormat(purchasePrice)}¥</div>
+              <div class="instant-price-sub">관부가세 포함 ${cleanNumberFormat(
+                calculateTotalPrice(purchasePrice, item.auc_num, item.category),
+              )}원</div>
+            </div>
+            <div class="instant-purchased-badge">구매완료</div>
           </div>
         </div>
-        ${purchaseInfo ? '<div class="my-bid-price"><span class="price-label">구매완료</span></div>' : ""}
-      </div>
-    `;
+      `;
+    } else {
+      // 구매 가능 상태
+      bidSection.innerHTML = `
+        <div class="bid-info instant">
+          <div class="instant-purchase-modal">
+            <div class="instant-price-display">
+              <div class="instant-price-main">${cleanNumberFormat(price)}¥</div>
+              <div class="instant-price-sub">관부가세 포함 ${cleanNumberFormat(totalKrw)}원</div>
+            </div>
+            <button class="instant-purchase-btn"
+              onclick="window.BidManager.handleInstantPurchase('${itemId}', ${item.auc_num})"
+            >바로 구매하기</button>
+            <div class="instant-status-info">
+              구매 버튼 클릭 시 확인 후 즉시 결제됩니다.
+            </div>
+          </div>
+        </div>
+      `;
+    }
   } else if (item.bid_type === "direct") {
     const directBidInfo = state.directBidData.find((b) => b.item_id == itemId);
     bidSection.innerHTML = window.BidManager.getDirectBidSectionHTML(
