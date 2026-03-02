@@ -355,7 +355,9 @@ window.requestAppraisal = async function (item) {
     const endpoint =
       item.type === "direct"
         ? `/bid-results/direct/${item.id}/request-appraisal`
-        : `/bid-results/live/${item.id}/request-appraisal`;
+        : item.type === "instant"
+          ? `/bid-results/instant/${item.id}/request-appraisal`
+          : `/bid-results/live/${item.id}/request-appraisal`;
 
     const response = await window.API.fetchAPI(endpoint, {
       method: "POST",

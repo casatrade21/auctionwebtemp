@@ -86,33 +86,64 @@ router.get("/", async (req, res) => {
     if (isAdminUserRole) {
       // 관리자: 모든 사용자의 날짜
       dateQuery = `
-        SELECT DISTINCT DATE(i.scheduled_date) as bid_date
-        FROM (
-          SELECT item_id FROM live_bids
+        SELECT DISTINCT bid_date FROM (
+          SELECT DATE(i.scheduled_date) as bid_date
+          FROM live_bids l
+          JOIN crawled_items i ON l.item_id = i.item_id
+          WHERE DATE(i.scheduled_date) >= ? ${searchCondition}
           UNION
-          SELECT item_id FROM direct_bids
-        ) as bids
-        JOIN crawled_items i ON bids.item_id = i.item_id
-        WHERE DATE(i.scheduled_date) >= ? ${searchCondition}
+          SELECT DATE(i.scheduled_date) as bid_date
+          FROM direct_bids d
+          JOIN crawled_items i ON d.item_id = i.item_id
+          WHERE DATE(i.scheduled_date) >= ? ${searchCondition}
+          UNION
+          SELECT DATE(ip.completed_at) as bid_date
+          FROM instant_purchases ip
+          JOIN crawled_items i ON ip.item_id = i.item_id
+          WHERE ip.status = 'completed' AND DATE(ip.completed_at) >= ? ${searchCondition}
+        ) as all_dates
         ORDER BY bid_date ${sortOrder.toUpperCase()}
       `;
-      dateParams = [fromDate, ...searchParams];
+      dateParams = [
+        fromDate,
+        ...searchParams,
+        fromDate,
+        ...searchParams,
+        fromDate,
+        ...searchParams,
+      ];
     } else {
       // 일반 사용자: 해당 사용자의 날짜만
       dateQuery = `
-        SELECT DISTINCT DATE(i.scheduled_date) as bid_date
-        FROM (
-          SELECT item_id FROM live_bids WHERE user_id = ?
+        SELECT DISTINCT bid_date FROM (
+          SELECT DATE(i.scheduled_date) as bid_date
+          FROM live_bids l
+          JOIN crawled_items i ON l.item_id = i.item_id
+          WHERE l.user_id = ? AND DATE(i.scheduled_date) >= ? ${searchCondition}
           UNION
-          SELECT item_id FROM direct_bids WHERE user_id = ?
+          SELECT DATE(i.scheduled_date) as bid_date
+          FROM direct_bids d
+          JOIN crawled_items i ON d.item_id = i.item_id
+          WHERE d.user_id = ? AND DATE(i.scheduled_date) >= ? ${searchCondition}
           UNION
-          SELECT item_id FROM instant_purchases WHERE user_id = ?
-        ) as bids
-        Join crawled_items i ON bids.item_id = i.item_id
-        WHERE DATE(i.scheduled_date) >= ? ${searchCondition}
+          SELECT DATE(ip.completed_at) as bid_date
+          FROM instant_purchases ip
+          JOIN crawled_items i ON ip.item_id = i.item_id
+          WHERE ip.user_id = ? AND ip.status = 'completed' AND DATE(ip.completed_at) >= ? ${searchCondition}
+        ) as all_dates
         ORDER BY bid_date ${sortOrder.toUpperCase()}
       `;
-      dateParams = [userId, userId, userId, fromDate, ...searchParams];
+      dateParams = [
+        userId,
+        fromDate,
+        ...searchParams,
+        userId,
+        fromDate,
+        ...searchParams,
+        userId,
+        fromDate,
+        ...searchParams,
+      ];
     }
 
     const [allDates] = await connection.query(dateQuery, dateParams);
@@ -241,12 +272,12 @@ router.get("/", async (req, res) => {
           SELECT 
             ip.id, 'instant' as type, ip.status, ip.user_id,
             ip.purchase_price as final_price, ip.purchase_price as winning_price,
-            ip.appr_id, ip.repair_requested_at, ip.created_at, ip.updated_at, ip.completed_at,
+            ip.shipping_status, ip.appr_id, ip.repair_requested_at, ip.created_at, ip.updated_at, ip.completed_at,
             i.item_id, i.original_title, i.title, i.brand, i.category, i.image,
             i.scheduled_date, i.auc_num, i.rank, i.starting_price
           FROM instant_purchases ip
           JOIN crawled_items i ON ip.item_id = i.item_id
-          WHERE DATE(i.scheduled_date) = ? ${searchCondition}
+          WHERE DATE(ip.completed_at) = ? ${searchCondition}
         `;
         instantParams = [targetDate, ...searchParams];
       } else {
@@ -254,12 +285,12 @@ router.get("/", async (req, res) => {
           SELECT 
             ip.id, 'instant' as type, ip.status, ip.user_id,
             ip.purchase_price as final_price, ip.purchase_price as winning_price,
-            ip.appr_id, ip.repair_requested_at, ip.created_at, ip.updated_at, ip.completed_at,
+            ip.shipping_status, ip.appr_id, ip.repair_requested_at, ip.created_at, ip.updated_at, ip.completed_at,
             i.item_id, i.original_title, i.title, i.brand, i.category, i.image,
             i.scheduled_date, i.auc_num, i.rank, i.starting_price
           FROM instant_purchases ip
           JOIN crawled_items i ON ip.item_id = i.item_id
-          WHERE ip.user_id = ? AND DATE(i.scheduled_date) = ? ${searchCondition}
+          WHERE ip.user_id = ? AND DATE(ip.completed_at) = ? ${searchCondition}
         `;
         instantParams = [userId, targetDate, ...searchParams];
       }
@@ -818,7 +849,7 @@ router.post("/instant/:id/request-appraisal", async (req, res) => {
     await connection.beginTransaction();
 
     const [bids] = await connection.query(
-      `SELECT ip.*, i.brand, i.title, i.category, i.image, i.additional_images, i.scheduled_date
+      `SELECT ip.*, i.brand, i.title, i.category, i.image, i.additional_images
        FROM instant_purchases ip 
        JOIN crawled_items i ON ip.item_id = i.item_id 
        WHERE ip.id = ? AND ip.status = 'completed' AND ip.purchase_price > 0`,
@@ -858,8 +889,8 @@ router.post("/instant/:id/request-appraisal", async (req, res) => {
     const account = accounts[0];
     const isIndividual = account?.account_type === "individual";
 
-    // 환율 조회 및 원화 환산
-    const settlementDate = new Date(bid.scheduled_date)
+    // 환율 조회 및 원화 환산 (instant는 completed_at 기준)
+    const settlementDate = new Date(bid.completed_at || new Date())
       .toISOString()
       .split("T")[0];
     const exchangeRate = await getExchangeRate(settlementDate);
@@ -1377,7 +1408,7 @@ router.post("/instant/:id/request-repair", async (req, res) => {
     await connection.beginTransaction();
 
     const [bids] = await connection.query(
-      `SELECT ip.*, i.brand, i.title, i.scheduled_date
+      `SELECT ip.*, i.brand, i.title
        FROM instant_purchases ip 
        JOIN crawled_items i ON ip.item_id = i.item_id 
        WHERE ip.id = ? AND ip.status = 'completed' AND ip.purchase_price > 0`,
@@ -1406,8 +1437,8 @@ router.post("/instant/:id/request-repair", async (req, res) => {
     const account = accounts[0];
     const isIndividual = account?.account_type === "individual";
 
-    // 환율 조회 및 원화 환산
-    const settlementDate = new Date(bid.scheduled_date)
+    // 환율 조회 및 원화 환산 (instant는 completed_at 기준)
+    const settlementDate = new Date(bid.completed_at || new Date())
       .toISOString()
       .split("T")[0];
     const exchangeRate = await getExchangeRate(settlementDate);
@@ -1477,19 +1508,17 @@ router.post("/instant/:id/request-repair", async (req, res) => {
 
     await connection.commit();
 
-    // 정산 업데이트 및 조정
-    if (bid.scheduled_date) {
-      try {
-        await createOrUpdateSettlement(bid.user_id, settlementDate);
-        await adjustDepositBalance(
-          bid.user_id,
-          bid.winning_price,
-          settlementDate,
-          bid.title,
-        );
-      } catch (err) {
-        console.error(`Error updating settlement for instant repair:`, err);
-      }
+    // 정산 업데이트 및 조정 (instant는 completed_at 기준)
+    try {
+      await createOrUpdateSettlement(bid.user_id, settlementDate);
+      await adjustDepositBalance(
+        bid.user_id,
+        bid.winning_price,
+        settlementDate,
+        bid.title,
+      );
+    } catch (err) {
+      console.error(`Error updating settlement for instant repair:`, err);
     }
 
     // 잔액 확인 및 경고

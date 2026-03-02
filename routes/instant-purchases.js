@@ -198,6 +198,12 @@ router.get("/", async (req, res) => {
       case "original_title":
         orderByColumn = "i.original_title";
         break;
+      case "starting_price":
+        orderByColumn = "i.starting_price";
+        break;
+      case "brand":
+        orderByColumn = "i.brand";
+        break;
       default:
         orderByColumn = "p.created_at";
         break;
@@ -530,9 +536,7 @@ router.post("/", async (req, res) => {
 
     // 13. 정산 생성
     try {
-      const settlementDate = new Date(item.scheduled_date || new Date())
-        .toISOString()
-        .split("T")[0];
+      const settlementDate = new Date().toISOString().split("T")[0];
       await createOrUpdateSettlement(userId, settlementDate);
 
       if (account.account_type === "individual") {
@@ -590,9 +594,8 @@ router.put("/cancel", isAdmin, async (req, res) => {
 
     // 1. 취소할 구매 정보 조회
     const [purchases] = await connection.query(
-      `SELECT p.id, p.user_id, p.status, p.purchase_price, i.scheduled_date
+      `SELECT p.id, p.user_id, p.status, p.purchase_price, p.completed_at
        FROM instant_purchases p
-       LEFT JOIN crawled_items i ON p.item_id = i.item_id
        WHERE p.id IN (${placeholders})`,
       purchaseIds,
     );
@@ -646,9 +649,9 @@ router.put("/cancel", isAdmin, async (req, res) => {
       }
 
       // 4. 정산 재계산
-      if (purchase.scheduled_date) {
+      if (purchase.completed_at) {
         try {
-          const settlementDate = new Date(purchase.scheduled_date)
+          const settlementDate = new Date(purchase.completed_at)
             .toISOString()
             .split("T")[0];
           await createOrUpdateSettlement(purchase.user_id, settlementDate);

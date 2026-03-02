@@ -21,6 +21,7 @@ class MyPageManager {
       keyword: "",
       liveBids: [],
       directBids: [],
+      instantPurchases: [],
       combinedResults: [],
       filteredResults: [],
       totalItems: 0,
@@ -307,26 +308,38 @@ class MyPageManager {
       const queryString = window.API.createURLParams(params);
 
       if (forceLoadBoth || this.bidProductsState.bidType === "all") {
-        const [liveResults, directResults] = await Promise.all([
+        const [liveResults, directResults, instantResults] = await Promise.all([
           window.API.fetchAPI(`/live-bids?${queryString}`),
           window.API.fetchAPI(`/direct-bids?${queryString}`),
+          window.API.fetchAPI(`/instant-purchases?${queryString}`),
         ]);
 
         this.bidProductsState.liveBids = liveResults.bids || [];
         this.bidProductsState.directBids = directResults.bids || [];
+        this.bidProductsState.instantPurchases = instantResults.purchases || [];
       } else {
         if (this.bidProductsState.bidType === "direct") {
           const directResults = await window.API.fetchAPI(
             `/direct-bids?${queryString}`,
           );
           this.bidProductsState.directBids = directResults.bids || [];
-          this.bidProductsState.liveBids = []; // 다른 타입 데이터 초기화
+          this.bidProductsState.liveBids = [];
+          this.bidProductsState.instantPurchases = [];
+        } else if (this.bidProductsState.bidType === "instant") {
+          const instantResults = await window.API.fetchAPI(
+            `/instant-purchases?${queryString}`,
+          );
+          this.bidProductsState.instantPurchases =
+            instantResults.purchases || [];
+          this.bidProductsState.liveBids = [];
+          this.bidProductsState.directBids = [];
         } else if (this.bidProductsState.bidType === "live") {
           const liveResults = await window.API.fetchAPI(
             `/live-bids?${queryString}`,
           );
           this.bidProductsState.liveBids = liveResults.bids || [];
-          this.bidProductsState.directBids = []; // 다른 타입 데이터 초기화
+          this.bidProductsState.directBids = [];
+          this.bidProductsState.instantPurchases = [];
         }
       }
 
@@ -346,9 +359,19 @@ class MyPageManager {
           displayStatus: bid.status,
         }));
 
+      const instantWithType = this.bidProductsState.instantPurchases
+        .filter((p) => p.item && p.item.item_id)
+        .map((p) => ({
+          ...p,
+          type: "instant",
+          displayStatus: p.status,
+          winning_price: p.purchase_price,
+        }));
+
       this.bidProductsState.combinedResults = [
         ...liveBidsWithType,
         ...directBidsWithType,
+        ...instantWithType,
       ];
 
       // bidType이 "all"일 때는 클라이언트에서 재정렬
@@ -362,6 +385,7 @@ class MyPageManager {
         window.BidManager.updateBidData(
           this.bidProductsState.liveBids,
           this.bidProductsState.directBids,
+          this.bidProductsState.instantPurchases,
         );
       }
     } catch (error) {
@@ -616,7 +640,11 @@ class MyPageManager {
             }</div>
             <div class="activity-details">
               <span class="activity-type">${
-                bid.type === "live" ? "현장경매" : "직접경매"
+                bid.type === "live"
+                  ? "현장경매"
+                  : bid.type === "instant"
+                    ? "바로 구매"
+                    : "직접경매"
               }</span>
               <span class="activity-price">￥${formatNumber(
                 displayPrice,
@@ -778,7 +806,9 @@ class MyPageManager {
 
   // 표시 가격 계산
   getDisplayPrice(bid) {
-    if (bid.type === "direct") {
+    if (bid.type === "instant") {
+      return bid.purchase_price || bid.winning_price || 0;
+    } else if (bid.type === "direct") {
       return bid.current_price || 0;
     } else {
       return bid.final_price || bid.second_price || bid.first_price || 0;
@@ -787,6 +817,16 @@ class MyPageManager {
 
   // 상태 텍스트 반환
   getStatusText(bid) {
+    // instant 상태 처리
+    if (bid.type === "instant") {
+      const statusMap = {
+        completed: "구매 완료",
+        cancelled: "구매 취소",
+        pending: "처리중",
+      };
+      return statusMap[bid.status] || "알 수 없음";
+    }
+
     // cancelled 상태일 때는 마감 여부만 고려 (live/direct 구분 없음)
     if (bid.status === "cancelled" && bid.item?.scheduled_date) {
       const now = new Date();
@@ -1440,6 +1480,23 @@ class MyPageManager {
       if (firstWrapper) firstWrapper.style.display = "block";
       if (secondWrapper) secondWrapper.style.display = "block";
       if (finalWrapper) finalWrapper.style.display = "block";
+    } else if (this.bidProductsState.bidType === "instant") {
+      // 바로 구매: 상태 필터 모두 숨김 (완료/취소만)
+      if (activeWrapper) activeWrapper.style.display = "none";
+      if (higherBidWrapper) higherBidWrapper.style.display = "none";
+      if (firstWrapper) firstWrapper.style.display = "none";
+      if (secondWrapper) secondWrapper.style.display = "none";
+      if (finalWrapper) finalWrapper.style.display = "none";
+
+      if (
+        ["first", "second", "final", "active", "higher-bid"].includes(
+          this.bidProductsState.status,
+        )
+      ) {
+        this.bidProductsState.status = "all";
+        const allRadio = document.getElementById("bidItems-status-all");
+        if (allRadio) allRadio.checked = true;
+      }
     } else if (this.bidProductsState.bidType === "direct") {
       // 직접 경매: 입찰 진행중, 더 높은 입찰 존재 표시
       if (activeWrapper) activeWrapper.style.display = "block";

@@ -1942,7 +1942,7 @@ router.get("/export/bid-results", isAdmin, async (req, res) => {
            i.image
          FROM instant_purchases ip
          JOIN crawled_items i ON ip.item_id = i.item_id
-         WHERE ip.user_id = ? AND DATE(i.scheduled_date) = ? AND ip.status = 'completed'`,
+         WHERE ip.user_id = ? AND DATE(ip.completed_at) = ? AND ip.status = 'completed'`,
         [user_id, settlement_date],
       );
 

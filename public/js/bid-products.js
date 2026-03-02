@@ -2,7 +2,7 @@
 
 // 상태 관리
 window.state = {
-  bidType: "live", // 경매 타입: live, direct
+  bidType: "live", // 경매 타입: live, direct, instant
   status: "all", // 상태: all, active(진행 중), completed, cancelled(낙찰 실패), higher-bid(직접경매용)
   dateRange: 30, // 날짜 범위(일)
   currentPage: 1, // 현재 페이지
@@ -12,6 +12,7 @@ window.state = {
   keyword: "", // 검색 키워드
   liveBids: [], // 현장 경매 데이터
   directBids: [], // 직접 경매 데이터
+  instantPurchases: [], // 바로 구매 데이터
   combinedResults: [], // 결합된 결과
   filteredResults: [], // 필터링된 결과
   totalItems: 0, // 전체 아이템 수
@@ -54,7 +55,7 @@ async function initialize() {
     ];
     const urlState = window.URLStateManager.loadFromURL(
       window.state,
-      stateKeys
+      stateKeys,
     );
     Object.assign(window.state, urlState);
 
@@ -74,7 +75,7 @@ async function initialize() {
     if (window.BidManager) {
       window.BidManager.initialize(
         window.state.isAuthenticated,
-        window.state.filteredResults.map((item) => item.item)
+        window.state.filteredResults.map((item) => item.item),
       );
     }
 
@@ -202,19 +203,28 @@ async function fetchProducts() {
     // 경매 타입에 따라 API 호출
     if (window.state.bidType === "direct") {
       const directResults = await window.API.fetchAPI(
-        `/direct-bids?${queryString}`
+        `/direct-bids?${queryString}`,
       );
       window.state.directBids = directResults.bids || [];
       window.state.liveBids = [];
+      window.state.instantPurchases = [];
+    } else if (window.state.bidType === "instant") {
+      const instantResults = await window.API.fetchAPI(
+        `/instant-purchases?${queryString}`,
+      );
+      window.state.instantPurchases = instantResults.purchases || [];
+      window.state.liveBids = [];
+      window.state.directBids = [];
     } else {
       window.state.bidType = "live";
       document.getElementById("bidType-live").checked = true;
 
       const liveResults = await window.API.fetchAPI(
-        `/live-bids?${queryString}`
+        `/live-bids?${queryString}`,
       );
       window.state.liveBids = liveResults.bids || [];
       window.state.directBids = [];
+      window.state.instantPurchases = [];
     }
 
     // 타입 정보 추가
@@ -234,7 +244,20 @@ async function fetchProducts() {
         displayStatus: bid.status,
       }));
 
-    window.state.combinedResults = [...liveBidsWithType, ...directBidsWithType];
+    const instantWithType = window.state.instantPurchases
+      .filter((p) => p.item && p.item.item_id)
+      .map((p) => ({
+        ...p,
+        type: "instant",
+        displayStatus: p.status,
+        winning_price: p.purchase_price,
+      }));
+
+    window.state.combinedResults = [
+      ...liveBidsWithType,
+      ...directBidsWithType,
+      ...instantWithType,
+    ];
 
     // 클라이언트 필터링은 displayProducts에서 수행됨
     // totalItems와 totalPages는 applyClientFilters에서 계산됨
@@ -243,7 +266,8 @@ async function fetchProducts() {
     if (window.BidManager) {
       window.BidManager.updateBidData(
         window.state.liveBids,
-        window.state.directBids
+        window.state.directBids,
+        window.state.instantPurchases,
       );
     }
 
@@ -420,7 +444,24 @@ function updateStatusFilterUI() {
   const secondWrapper = document.getElementById("status-second-wrapper");
   const finalWrapper = document.getElementById("status-final-wrapper");
 
-  if (window.state.bidType === "direct") {
+  if (window.state.bidType === "instant") {
+    // 바로 구매: 상태 필터 모두 숨김 (완료/취소만)
+    if (activeWrapper) activeWrapper.style.display = "none";
+    if (higherBidWrapper) higherBidWrapper.style.display = "none";
+    if (firstWrapper) firstWrapper.style.display = "none";
+    if (secondWrapper) secondWrapper.style.display = "none";
+    if (finalWrapper) finalWrapper.style.display = "none";
+
+    if (
+      ["first", "second", "final", "active", "higher-bid"].includes(
+        window.state.status,
+      )
+    ) {
+      window.state.status = "all";
+      const allRadio = document.getElementById("status-all");
+      if (allRadio) allRadio.checked = true;
+    }
+  } else if (window.state.bidType === "direct") {
     // 직접 경매: 입찰 진행중, 더 높은 입찰 존재 표시
     if (activeWrapper) activeWrapper.style.display = "block";
     if (higherBidWrapper) higherBidWrapper.style.display = "block";

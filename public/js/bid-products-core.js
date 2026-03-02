@@ -70,6 +70,9 @@ window.BidProductsCore = (function () {
   function checkIfExpired(product) {
     if (!product.item) return false;
 
+    // 바로 구매는 마감 개념이 없음
+    if (product.type === "instant") return false;
+
     let timer;
     if (product.type === "live") {
       if (product.first_price && !product.final_price) {
@@ -355,17 +358,33 @@ window.BidProductsCore = (function () {
     // 상태 표시
     const statusEl = element.querySelector('[data-field="status_display"]');
     if (statusEl) {
-      const bidInfo = product.type === "live" ? product : null;
-      const statusClass = getStatusClass(
-        product.displayStatus,
-        item.scheduled_date,
-        bidInfo,
-      );
-      const statusText = getStatusDisplay(
-        product.displayStatus,
-        item.scheduled_date,
-        product.type === "live" ? bidInfo : null, // direct는 null 전달
-      );
+      let statusText, statusClass;
+
+      if (product.type === "instant") {
+        // 바로 구매 전용 상태 텍스트
+        const instantStatusMap = {
+          completed: "구매 완료",
+          cancelled: "구매 취소",
+          pending: "처리중",
+        };
+        statusText = instantStatusMap[product.displayStatus] || "알 수 없음";
+        statusClass =
+          product.displayStatus === "completed"
+            ? "status-completed"
+            : "status-cancelled";
+      } else {
+        const bidInfo = product.type === "live" ? product : null;
+        statusClass = getStatusClass(
+          product.displayStatus,
+          item.scheduled_date,
+          bidInfo,
+        );
+        statusText = getStatusDisplay(
+          product.displayStatus,
+          item.scheduled_date,
+          product.type === "live" ? bidInfo : null,
+        );
+      }
 
       statusEl.textContent = statusText;
       statusEl.className = `status-badge ${statusClass}`;
@@ -387,7 +406,11 @@ window.BidProductsCore = (function () {
 
     // 현장 경매의 경우 입찰 정보를 고려한 타이머 체크
     let timer, isExpired;
-    if (product.type === "live") {
+    if (product.type === "instant") {
+      // 바로 구매는 마감 개념이 없음
+      timer = null;
+      isExpired = false;
+    } else if (product.type === "live") {
       if (product.first_price && !product.final_price) {
         timer = window.BidManager
           ? window.BidManager.getRemainingTime(item.scheduled_date, "final")
@@ -397,13 +420,13 @@ window.BidProductsCore = (function () {
           ? window.BidManager.getRemainingTime(item.scheduled_date, "first")
           : null;
       }
+      isExpired = !timer;
     } else {
       timer = window.BidManager
         ? window.BidManager.getRemainingTime(item.scheduled_date, "first")
         : null;
+      isExpired = !timer;
     }
-
-    isExpired = !timer;
 
     const isActiveBid =
       (product.displayStatus === "active" ||
@@ -892,7 +915,11 @@ window.BidProductsCore = (function () {
     // 현장 경매의 경우 입찰 단계에 따른 타이머 체크
     let timer, isScheduledPassed;
 
-    if (product.type === "live") {
+    if (product.type === "instant") {
+      // 바로 구매는 마감 개념이 없음
+      timer = null;
+      isScheduledPassed = false;
+    } else if (product.type === "live") {
       if (product.first_price && !product.final_price) {
         timer = window.BidManager.getRemainingTime(
           item.scheduled_date,
@@ -904,11 +931,11 @@ window.BidProductsCore = (function () {
           "first",
         );
       }
+      isScheduledPassed = !timer;
     } else {
       timer = window.BidManager.getRemainingTime(item.scheduled_date, "first");
+      isScheduledPassed = !timer;
     }
-
-    isScheduledPassed = !timer;
 
     // 마감되었거나 완료/취소 상태인 경우 읽기 전용 표시
     if (isScheduledPassed || product.displayStatus === "completed") {
@@ -981,11 +1008,19 @@ window.BidProductsCore = (function () {
         <div class="price-status ${statusClass}">
           ${statusText}
         </div>
+        ${
+          product.type === "instant"
+            ? `
+        <div class="price-date">
+          <strong>구매일:</strong> ${formatDateTime(product.completed_at)}
+        </div>`
+            : `
         <div class="price-date">
           <strong>예정일:</strong> ${formatDateTime(item.scheduled_date)}
-        </div>
+        </div>`
+        }
         <div class="price-starting">
-          <strong>시작가:</strong> ￥${formatNumber(item.starting_price || 0)}
+          <strong>${product.type === "instant" ? "판매가:" : "시작가:"}</strong> ￥${formatNumber(item.starting_price || 0)}
         </div>
     `;
 

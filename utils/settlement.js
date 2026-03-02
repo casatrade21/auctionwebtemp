@@ -88,7 +88,7 @@ async function createOrUpdateSettlement(userId, date) {
        FROM instant_purchases p
        LEFT JOIN crawled_items i ON p.item_id = i.item_id
        WHERE p.user_id = ? 
-         AND DATE(i.scheduled_date) = ?
+         AND DATE(p.completed_at) = ?
          AND p.status = 'completed'`,
       [userId, date],
     );
@@ -320,8 +320,7 @@ async function adjustDepositBalance(connection, userId, settlementDate) {
        UNION
        SELECT p.id, 'instant_purchase' as bid_type
        FROM instant_purchases p 
-       JOIN crawled_items i ON p.item_id = i.item_id 
-       WHERE p.user_id = ? AND DATE(i.scheduled_date) = ? AND p.status = 'completed'`,
+       WHERE p.user_id = ? AND DATE(p.completed_at) = ? AND p.status = 'completed'`,
       [userId, settlementDate, userId, settlementDate, userId, settlementDate],
     );
 

@@ -494,11 +494,12 @@ window.BidResultsCore = (function () {
     const finalPrice = item.final_price || item.finalPrice || 0;
     const winningPrice = item.winning_price || item.winningPrice || 0;
     const koreanPrice = item.korean_price || item.koreanPrice || 0;
+    const isInstant = item.type === "instant";
 
-    // 최종입찰금액
+    // 최종입찰금액 / 구매금액
     const finalPriceItem = createElement("div", "mobile-price-item");
     finalPriceItem.innerHTML = `
-      <span class="price-label">최종입찰금액 (¥)</span>
+      <span class="price-label">${isInstant ? "구매금액 (¥)" : "최종입찰금액 (¥)"}</span>
       <span class="price-value">¥${formatNumber(finalPrice)}</span>
     `;
 
@@ -506,12 +507,12 @@ window.BidResultsCore = (function () {
     const winningPriceItem = createElement("div", "mobile-price-item");
     if (status === "pending") {
       winningPriceItem.innerHTML = `
-        <span class="price-label">실제낙찰금액 (¥)</span>
+        <span class="price-label">${isInstant ? "구매금액 (¥)" : "실제낙찰금액 (¥)"}</span>
         <span class="price-value pending-text">집계중</span>
       `;
     } else {
       winningPriceItem.innerHTML = `
-        <span class="price-label">실제낙찰금액 (¥)</span>
+        <span class="price-label">${isInstant ? "구매금액 (¥)" : "실제낙찰금액 (¥)"}</span>
         <span class="price-value">¥${formatNumber(winningPrice)}</span>
       `;
     }
