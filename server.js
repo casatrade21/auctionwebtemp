@@ -42,6 +42,7 @@ const depositsRoutes = require("./routes/deposits");
 const popbillRoutes = require("./routes/popbill");
 const wmsRoutes = require("./routes/wms");
 const repairManagementRoutes = require("./routes/repair-management");
+const shippingRoutes = require("./routes/shipping");
 
 // --- 감정 시스템 관련 라우트 ---
 const appraisalsApprRoutes = require("./routes/appr/appraisals");
@@ -164,6 +165,7 @@ app.use("/api/deposits", depositsRoutes);
 app.use("/api/popbill", popbillRoutes);
 app.use("/api/wms", wmsRoutes);
 app.use("/api/repair-management", repairManagementRoutes);
+app.use("/api/shipping", shippingRoutes);
 
 app.use("/api/appr/appraisals", appraisalsApprRoutes);
 app.use("/api/appr/restorations", restorationsApprRoutes);
@@ -316,6 +318,7 @@ const ADMIN_MENU_PATH_BY_KEY = {
   settings: "/admin/settings",
   wms: "/admin/wms",
   "repair-management": "/admin/repair-management",
+  shipping: "/admin/shipping",
   "activity-logs": "/admin/activity-logs",
 };
 
@@ -373,6 +376,7 @@ app.get(
   "/admin/activity-logs",
   sendAdminPage("activity-logs.html", "activity-logs"),
 );
+app.get("/admin/shipping", sendAdminPage("shipping.html", "shipping"));
 app.get(
   "/admin/admin-permissions",
   sendAdminPage("admin-permissions.html", "__superadmin__"),

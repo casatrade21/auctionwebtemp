@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>출고/배송 관리</title>
+    <link rel="stylesheet" href="/styles/common.css" />
+    <link rel="stylesheet" href="/styles/admin/common.css" />
+    <link rel="stylesheet" href="/styles/admin/admin.css" />
+    <link rel="stylesheet" href="/styles/admin/unified.css" />
+    <style>
+      .shipping-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+      }
+      .shipping-tabs button {
+        padding: 8px 20px;
+        border: 1px solid #ddd;
+        background: #f9f9f9;
+        border-radius: 6px 6px 0 0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .shipping-tabs button.active {
+        background: #2c6ecb;
+        color: #fff;
+        border-color: #2c6ecb;
+      }
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .card h3 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .toolbar input,
+      .toolbar select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      .toolbar input[type="text"] {
+        min-width: 200px;
+      }
+      .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .btn-primary {
+        background: #2c6ecb;
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: #1a56a8;
+      }
+      .btn-secondary {
+        background: #eee;
+        color: #333;
+      }
+      .btn-danger {
+        background: #e74c3c;
+        color: #fff;
+      }
+      .btn-sm {
+        padding: 4px 10px;
+        font-size: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+      }
+      th {
+        background: #f8f9fa;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+      }
+      tr:hover {
+        background: #f5f8ff;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .status-ready {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .status-slip_issued {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      .status-order_registered {
+        background: #cce5ff;
+        color: #004085;
+      }
+      .status-picked_up {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-in_transit {
+        background: #cce5ff;
+        color: #004085;
+      }
+      .status-out_for_delivery {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-delivered {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-failed {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .status-returned {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .api-status {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-bottom: 12px;
+      }
+      .api-status.configured {
+        background: #d4edda;
+        color: #155724;
+      }
+      .api-status.not-configured {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .empty-msg {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+      }
+      .pagination {
+        display: flex;
+        gap: 4px;
+        justify-content: center;
+        margin-top: 12px;
+      }
+      .pagination button {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        background: #fff;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .pagination button.active {
+        background: #2c6ecb;
+        color: #fff;
+        border-color: #2c6ecb;
+      }
+
+      /* 모달 */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-overlay.show {
+        display: flex;
+      }
+      .modal-dialog {
+        background: #fff;
+        border-radius: 12px;
+        width: 560px;
+        max-width: 95vw;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid #eee;
+      }
+      .modal-header h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+      }
+      .modal-body {
+        padding: 20px;
+      }
+      .modal-footer {
+        padding: 12px 20px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      .form-group {
+        margin-bottom: 12px;
+      }
+      .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: #555;
+      }
+      .form-group input,
+      .form-group textarea,
+      .form-group select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .addr-info {
+        font-size: 11px;
+        color: #888;
+        margin-top: 4px;
+      }
+      .addr-info .badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 8px;
+        font-size: 10px;
+        margin-right: 4px;
+      }
+      .addr-info .badge-jeju {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .addr-info .badge-island {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .addr-info .badge-mountain {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      .tracking-timeline {
+        padding: 0;
+        list-style: none;
+      }
+      .tracking-timeline li {
+        position: relative;
+        padding: 8px 0 8px 24px;
+        border-left: 2px solid #ddd;
+        font-size: 12px;
+      }
+      .tracking-timeline li:last-child {
+        border-left-color: #2c6ecb;
+      }
+      .tracking-timeline li::before {
+        content: "";
+        position: absolute;
+        left: -5px;
+        top: 12px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ddd;
+      }
+      .tracking-timeline li:last-child::before {
+        background: #2c6ecb;
+      }
+      .tracking-timeline .time {
+        color: #999;
+        font-size: 11px;
+      }
+      .tracking-timeline .desc {
+        font-weight: 500;
+      }
+      .tracking-timeline .loc {
+        color: #666;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="admin-layout">
+      <div class="sidebar">
+        <div class="sidebar-logo"><h2>경매 관리자</h2></div>
+        <div class="sidebar-menu">
+          <a href="/admin">대시보드</a>
+          <a href="/admin/live-bids">현장 경매 관리</a>
+          <a href="/admin/direct-bids">직접 경매 관리</a>
+          <a href="/admin/instant-purchases">바로 구매 관리</a>
+          <a href="/admin/all-bids">통합 경매 관리</a>
+          <a href="/admin/bid-results">입찰 결과 & 정산</a>
+          <a href="/admin/transactions">거래 내역 관리</a>
+          <a href="/admin/invoices">인보이스 관리</a>
+          <a href="/admin/users">회원 관리</a>
+          <a href="/admin/recommend-filters">추천 및 필터</a>
+          <a href="/admin/settings">관리자 설정</a>
+          <a href="/admin/wms">WMS(입고/수선/출고)</a>
+          <a href="/admin/shipping" class="active">출고/배송 관리</a>
+          <a href="/admin/repair-management">수선 관리</a>
+          <a href="/admin/activity-logs">사용자 활동기록</a>
+          <a href="/admin/admin-permissions">관리자 권한 관리</a>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="main-header">
+          <h1>출고/배송 관리</h1>
+          <div class="user-info" style="display: flex; align-items: center">
+            <div class="admin-switch">
+              <a href="#" class="active">경매 관리</a>
+              <a href="https://cassystem.com/admin" class="inactive"
+                >명품감정</a
+              >
+            </div>
+            <button
+              class="logout-btn"
+              onclick="location.href = '/api/auth/logout'">
+              로그아웃
+            </button>
+          </div>
+        </div>
+
+        <!-- API 상태 -->
+        <div id="apiStatus" class="api-status not-configured">
+          로젠 API 상태 확인 중...
+        </div>
+
+        <!-- 탭 -->
+        <div class="shipping-tabs">
+          <button class="active" data-tab="outbound">출고 대기</button>
+          <button data-tab="all">전체 배송</button>
+        </div>
+
+        <!-- 출고 대기 탭 -->
+        <div id="tab-outbound" class="tab-content">
+          <div class="card">
+            <h3>출고 대기 목록 (WMS 출고존)</h3>
+            <div class="toolbar">
+              <button class="btn btn-primary" id="btnRefreshOutbound">
+                새로고침
+              </button>
+            </div>
+            <div style="overflow-x: auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th><input type="checkbox" id="checkAllOutbound" /></th>
+                    <th>WMS ID</th>
+                    <th>바코드</th>
+                    <th>회원사</th>
+                    <th>상품명</th>
+                    <th>수취주소</th>
+                    <th>입찰유형</th>
+                    <th>동작</th>
+                  </tr>
+                </thead>
+                <tbody id="outboundBody"></tbody>
+              </table>
+            </div>
+            <div id="outboundEmpty" class="empty-msg" style="display: none">
+              출고 대기 물건이 없습니다.
+            </div>
+          </div>
+        </div>
+
+        <!-- 전체 배송 탭 -->
+        <div id="tab-all" class="tab-content" style="display: none">
+          <div class="card">
+            <h3>전체 배송 목록</h3>
+            <div class="toolbar">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="송장번호, 수신자명, 상품명 검색..." />
+              <select id="statusFilter">
+                <option value="all">전체 상태</option>
+                <option value="ready">출고준비</option>
+                <option value="slip_issued">송장채번</option>
+                <option value="order_registered">주문등록</option>
+                <option value="picked_up">집하</option>
+                <option value="in_transit">배송중</option>
+                <option value="out_for_delivery">배달중</option>
+                <option value="delivered">배달완료</option>
+                <option value="failed">배달실패</option>
+                <option value="returned">반송</option>
+              </select>
+              <button class="btn btn-primary" id="btnSearchAll">검색</button>
+              <button class="btn btn-secondary" id="btnRefreshAll">
+                배송상태 일괄 갱신
+              </button>
+              <button class="btn btn-secondary" id="btnBulkPdf">
+                선택 송장 출력
+              </button>
+            </div>
+            <div style="overflow-x: auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th><input type="checkbox" id="checkAllShipments" /></th>
+                    <th>ID</th>
+                    <th>송장번호</th>
+                    <th>수신자</th>
+                    <th>상품명</th>
+                    <th>회원사</th>
+                    <th>상태</th>
+                    <th>최종 추적</th>
+                    <th>등록일</th>
+                    <th>동작</th>
+                  </tr>
+                </thead>
+                <tbody id="shipmentsBody"></tbody>
+              </table>
+            </div>
+            <div id="shipmentsEmpty" class="empty-msg" style="display: none">
+              배송 내역이 없습니다.
+            </div>
+            <div class="pagination" id="shipmentsPagination"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 송장 등록 모달 -->
+    <div class="modal-overlay" id="registerModal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>송장 등록</h3>
+          <button class="modal-close" id="registerModalClose">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="reg-bid-type" />
+          <input type="hidden" id="reg-bid-id" />
+          <input type="hidden" id="reg-wms-item-id" />
+          <input type="hidden" id="reg-user-id" />
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>수신자명 *</label>
+              <input type="text" id="reg-receiver-name" />
+            </div>
+            <div class="form-group">
+              <label>전화번호 *</label>
+              <input type="text" id="reg-receiver-phone" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>휴대폰번호</label>
+            <input type="text" id="reg-receiver-cell" />
+          </div>
+          <div class="form-group">
+            <label>주소 *</label>
+            <input
+              type="text"
+              id="reg-receiver-address"
+              placeholder="주소 입력 후 Tab으로 배송점 자동 조회" />
+            <div class="addr-info" id="addrInfo" style="display: none"></div>
+          </div>
+          <div class="form-group">
+            <label>상세주소</label>
+            <input type="text" id="reg-receiver-address-detail" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>상품명</label>
+              <input type="text" id="reg-item-name" />
+            </div>
+            <div class="form-group">
+              <label>물품금액</label>
+              <input type="number" id="reg-goods-amount" value="0" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>관리자 메모</label>
+            <textarea id="reg-admin-memo" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="registerCancelBtn">취소</button>
+          <button class="btn btn-primary" id="registerSubmitBtn">
+            송장 등록
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 배송 추적 모달 -->
+    <div class="modal-overlay" id="trackingModal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>배송 추적</h3>
+          <button class="modal-close" id="trackingModalClose">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="trackingInfo"></div>
+          <ul class="tracking-timeline" id="trackingTimeline"></ul>
+        </div>
+        <div class="modal-footer">
+          <button
+            class="btn btn-secondary"
+            onclick="
+              document.getElementById('trackingModal').classList.remove('show')
+            ">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/js/common.js"></script>
+    <script src="/js/admin/common.js"></script>
+    <script src="/js/admin/shipping.js"></script>
+  </body>
+</html>

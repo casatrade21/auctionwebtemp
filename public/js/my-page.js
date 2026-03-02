@@ -511,6 +511,9 @@ class MyPageManager {
         case "account":
           await this.renderAccountSection();
           break;
+        case "shipping":
+          if (window.MyPageShipping) window.MyPageShipping.load();
+          break;
       }
 
       console.log(`섹션 전환 완료: ${sectionName}`);
