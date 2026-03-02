@@ -5,7 +5,7 @@
  */
 const cheerio = require("cheerio");
 const { AxiosCrawler } = require("./baseCrawler");
-const { processImagesInChunks } = require("../utils/imageProcessor");
+const { processImagesInChunks } = require("../utils/processImage");
 const FormData = require("form-data");
 
 let pLimit;
