@@ -5,6 +5,7 @@
  * XML 사이트맵을 생성한다.
  */
 const express = require("express");
+const router = express.Router();
 function extractRoutes(app) {
   const routes = [];
 
