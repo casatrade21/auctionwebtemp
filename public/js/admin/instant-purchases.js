@@ -264,7 +264,28 @@ async function loadInstantPurchases() {
 
     const response = await fetchAPI(`/instant-purchases?${params.toString()}`);
 
-    currentPurchasesData = response.data || [];
+    // 응답 데이터를 플랫 구조로 정규화 (item 하위 필드를 최상위로)
+    currentPurchasesData = (response.purchases || response.data || []).map(
+      (p) => {
+        const ci = p.item || {};
+        return {
+          ...p,
+          brand: p.brand || ci.brand,
+          original_title: p.original_title || ci.original_title,
+          title: p.title || ci.title,
+          image: p.image || ci.image,
+          auc_num: p.auc_num || ci.auc_num,
+          category: p.category || ci.category,
+          rank: p.rank || ci.rank,
+          starting_price: p.starting_price || ci.starting_price,
+          scheduled_date: p.scheduled_date || ci.scheduled_date,
+          original_scheduled_date:
+            p.original_scheduled_date || ci.original_scheduled_date,
+          additional_info: p.additional_info || ci.additional_info,
+          wms_internal_barcode: p.wms_internal_barcode || p.internal_barcode,
+        };
+      },
+    );
     totalPages = response.totalPages || 1;
     currentPage = response.currentPage || 1;
 

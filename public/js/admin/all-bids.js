@@ -136,6 +136,29 @@ class UnifiedAuctionManager {
     }
   }
 
+  // 바로 구매 데이터를 플랫 구조로 정규화
+  normalizeInstantPurchases(purchases) {
+    return (purchases || []).map((p) => {
+      const ci = p.item || {};
+      return {
+        ...p,
+        brand: p.brand || ci.brand,
+        original_title: p.original_title || ci.original_title,
+        title: p.title || ci.title,
+        image: p.image || ci.image,
+        auc_num: p.auc_num || ci.auc_num,
+        category: p.category || ci.category,
+        rank: p.rank || ci.rank,
+        starting_price: p.starting_price || ci.starting_price,
+        scheduled_date: p.scheduled_date || ci.scheduled_date,
+        original_scheduled_date:
+          p.original_scheduled_date || ci.original_scheduled_date,
+        additional_info: p.additional_info || ci.additional_info,
+        wms_internal_barcode: p.wms_internal_barcode || p.internal_barcode,
+      };
+    });
+  }
+
   // 상태 집계 계산
   calculateStats(bids, type) {
     if (!bids || !Array.isArray(bids)) {
@@ -394,7 +417,9 @@ class UnifiedAuctionManager {
 
       this.liveData = liveRecent.bids || [];
       this.directData = directRecent.bids || [];
-      this.instantData = instantRecent.purchases || [];
+      this.instantData = this.normalizeInstantPurchases(
+        instantRecent.purchases,
+      );
 
       this.renderUnifiedResults();
     } catch (error) {
@@ -453,7 +478,9 @@ class UnifiedAuctionManager {
 
       this.liveData = liveResults.bids || [];
       this.directData = directResults.bids || [];
-      this.instantData = instantResults.purchases || [];
+      this.instantData = this.normalizeInstantPurchases(
+        instantResults.purchases,
+      );
       this.currentFilter = "search";
 
       this.renderUnifiedResults();
@@ -583,9 +610,11 @@ class UnifiedAuctionManager {
         return (bid.current_price || 0) >= this.highValueThreshold;
       });
 
-      this.instantData = (instantAll.purchases || []).filter((p) => {
-        return (p.purchase_price || 0) >= this.highValueThreshold;
-      });
+      this.instantData = this.normalizeInstantPurchases(
+        (instantAll.purchases || []).filter((p) => {
+          return (p.purchase_price || 0) >= this.highValueThreshold;
+        }),
+      );
 
       this.currentFilter = "high-value";
       this.renderUnifiedResults();
@@ -608,7 +637,9 @@ class UnifiedAuctionManager {
 
       this.liveData = liveCompleted.bids || [];
       this.directData = directCompleted.bids || [];
-      this.instantData = instantCompleted.purchases || [];
+      this.instantData = this.normalizeInstantPurchases(
+        instantCompleted.purchases,
+      );
       this.currentFilter = "completed";
 
       this.renderUnifiedResults();
