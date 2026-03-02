@@ -255,6 +255,9 @@ class MyPageManager {
   // 입찰 항목 데이터 로드
   async loadBidItemsData(forceLoadBoth = false) {
     try {
+      // 참고: 백엔드의 SHIPPING_STATUSES에 'completed', 'pending'이 포함되어 있어
+      // bid status로 보낸 값이 shipping_status로 오해될 수 있음.
+      // 'all', 'completed', 'cancelled'은 status 파라미터를 보내지 않고 클라이언트 필터링으로 처리
       let statusParam;
       switch (this.bidProductsState.status) {
         case "first":
@@ -277,14 +280,11 @@ class MyPageManager {
           statusParam = "cancelled";
           break;
         case "completed":
-          statusParam = this.bidProductsCore.STATUS_GROUPS.COMPLETED.join(",");
-          break;
         case "cancelled":
-          statusParam = this.bidProductsCore.STATUS_GROUPS.ALL.join(",");
-          break;
         case "all":
         default:
-          statusParam = this.bidProductsCore.STATUS_GROUPS.ALL.join(",");
+          // 백엔드 SHIPPING_STATUSES 충돌 방지: status 필터 없이 전체 데이터 요청, 클라이언트에서 필터링
+          statusParam = null;
           break;
       }
 
@@ -293,13 +293,17 @@ class MyPageManager {
       const fromDate = formatDate(dateLimit);
 
       const params = {
-        status: statusParam,
         fromDate: fromDate,
         page: 1,
         limit: 0,
         sortBy: this.bidProductsState.sortBy,
         sortOrder: this.bidProductsState.sortOrder,
       };
+
+      // status 필터가 있는 경우에만 추가 (백엔드 SHIPPING_STATUSES 충돌 방지)
+      if (statusParam) {
+        params.status = statusParam;
+      }
 
       if (this.bidProductsState.keyword?.trim()) {
         params.search = this.bidProductsState.keyword.trim();
@@ -858,6 +862,7 @@ class MyPageManager {
       first: "first",
       second: "second",
       final: "final",
+      pending: "pending",
       completed: "completed",
       cancelled: "cancelled",
     };
