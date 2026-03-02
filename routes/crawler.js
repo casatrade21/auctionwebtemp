@@ -1,4 +1,11 @@
-// routes/crawler.js
+/**
+ * routes/crawler.js — 크롤러 오케스트레이션 API
+ *
+ * EcoAuc·BrandAuc·StarAuc·MekikiAuc·PenguinAuc 크롤러 실행,
+ * cron 스케줄링, Socket.IO 실시간 상태 전파,
+ * 데이터 동기화(syncAllData) 트리거.
+ * 마운트: /api/crawler
+ */
 const express = require("express");
 const router = express.Router();
 const {

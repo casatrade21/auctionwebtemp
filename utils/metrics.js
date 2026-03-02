@@ -1,14 +1,17 @@
-// utils/metrics.js
+/**
+ * metrics.js — 실시간 웹사이트 메트릭스
+ *
+ * 미들웨어로 요청 수, 유니크 페이지뷰(30분 중복제거),
+ * 회원/비회원 활성 사용자를 추적한다.
+ * JSON 파일로 5분마다 영속화하고, 자정에 일일 초기화.
+ */
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const cron = require("node-cron"); // node-cron 추가
+const cron = require("node-cron");
 
-// 메트릭스 데이터 파일 경로
 const METRICS_FILE = path.join(__dirname, "data", "metrics.json");
 const INACTIVE_TIMEOUT = 30 * 60 * 1000; // 30분
-
-// 초기 메트릭스 객체
 const defaultMetrics = {
   memberActiveUsers: new Map(),
   guestActiveUsers: new Map(),

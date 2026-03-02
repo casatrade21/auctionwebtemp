@@ -1,4 +1,10 @@
-// routes/auth.js
+/**
+ * routes/auth.js — 인증 API
+ *
+ * 로그인(SHA-256), 로그아웃, 세션 확인.
+ * 초기 로그인 시 admin_permission 테이블 자동 생성.
+ * 마운트: /api/auth
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

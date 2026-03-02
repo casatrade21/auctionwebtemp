@@ -1,4 +1,10 @@
-// routes/dashboard.js - 대시보드 API 라우터
+/**
+ * routes/dashboard.js — 관리자 대시보드 API
+ *
+ * 요약 통계(Executive Summary)를 KST 자정 만료 캐시로 제공.
+ * 관리자 전용.
+ * 마운트: /api/dashboard
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

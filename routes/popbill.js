@@ -1,4 +1,10 @@
-// routes/popbill.js - 팝빌 API + Cron 통합
+/**
+ * routes/popbill.js — 팝빌 API + Cron 통합
+ *
+ * 입금 확인, 정산 매칭, 현금영수증/세금계산서 발행.
+ * cron으로 자동 입금 체크 실행.
+ * 마운트: /api/popbill
+ */
 const express = require("express");
 const router = express.Router();
 const cron = require("node-cron");

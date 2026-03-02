@@ -1,4 +1,9 @@
-// routes/live-bids.js - 현장 경매(1차->2차->최종) 라우터
+/**
+ * routes/live-bids.js — 현장 경매(1차→2차→최종) API
+ *
+ * 다단계 입찰 프로세스, 정산·예치금 연동.
+ * 마운트: /api/live-bids
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

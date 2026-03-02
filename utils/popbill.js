@@ -1,8 +1,14 @@
-// utils/popbill.js
+/**
+ * popbill.js — 팝빌 연동 (싱글톤)
+ *
+ * EasyFinBank — 입금 확인 / 정산 매칭 (퍼지 명의 매칭)
+ * CashbillService — 현금영수증 발행
+ * TaxinvoiceService — 세금계산서 발행
+ * 중복 매칭 방지를 위해 TID 사용 이력을 관리한다.
+ */
 const popbill = require("popbill");
 const { pool } = require("./DB");
 
-// 팝빌 SDK 초기화
 popbill.config({
   LinkID: process.env.POPBILL_LINKID,
   SecretKey: process.env.POPBILL_SECRET_KEY,

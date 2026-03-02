@@ -1,4 +1,10 @@
-// routes/values.js
+/**
+ * routes/values.js — 시세(낙찰가) 데이터 API
+ *
+ * Elasticsearch 검색, 필터 캐시(1시간),
+ * values_items 테이블 조회/처리.
+ * 마운트: /api/values
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

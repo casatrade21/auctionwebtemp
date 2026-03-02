@@ -1,4 +1,9 @@
-// utils/s3Migration.js
+/**
+ * s3Migration.js — values_items 이미지 S3 마이그레이션
+ *
+ * 로컬 이미지를 AWS S3로 업로드하고 DB 경로를 CloudFront URL로 교체.
+ * 동적 배치 크기, 병렬 20건 업로드, 완료 후 로컬 파일 삭제.
+ */
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { pool } = require("./DB");
 const fs = require("fs").promises;
@@ -117,8 +122,8 @@ class ValuesImageMigration {
       `[S3 Migration] Progress: ${this.stats.successCount} migrated, ${
         this.stats.failedCount
       } failed | Remaining: ${remainingCount} | Batch: ${batchSize} | Rate: ${rate.toFixed(
-        2
-      )}/s | ETA: ${eta}min`
+        2,
+      )}/s | ETA: ${eta}min`,
     );
   }
 
@@ -211,7 +216,7 @@ class ValuesImageMigration {
       const chunk = items.slice(i, i + this.concurrentUploads);
 
       const chunkResults = await Promise.allSettled(
-        chunk.map((item) => this.processItem(item))
+        chunk.map((item) => this.processItem(item)),
       );
 
       chunkResults.forEach((result, index) => {
@@ -221,7 +226,7 @@ class ValuesImageMigration {
           const item = chunk[index];
           console.error(
             `[S3 Migration] Failed to process item ${item.item_id}:`,
-            result.reason.message
+            result.reason.message,
           );
           failed.push({
             item_id: item.item_id,
@@ -260,13 +265,15 @@ class ValuesImageMigration {
         try {
           const additionalImages = JSON.parse(item.additional_images);
           const localImages = additionalImages.filter((img) =>
-            this.isLocalPath(img)
+            this.isLocalPath(img),
           );
 
           if (localImages.length > 0) {
             // 병렬 업로드
             const s3Urls = await Promise.all(
-              localImages.map((img) => this.uploadImageToS3(img, scheduledDate))
+              localImages.map((img) =>
+                this.uploadImageToS3(img, scheduledDate),
+              ),
             );
 
             // 로컬 경로를 S3 URL로 교체
@@ -284,7 +291,7 @@ class ValuesImageMigration {
         } catch (parseError) {
           console.warn(
             `[S3 Migration] Failed to parse additional_images for ${item.item_id}:`,
-            parseError.message
+            parseError.message,
           );
         }
       }
@@ -420,7 +427,7 @@ class ValuesImageMigration {
         if (error.code !== "ENOENT") {
           console.error(
             `[S3 Migration] Failed to delete ${fileName}:`,
-            error.message
+            error.message,
           );
         }
       }

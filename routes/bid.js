@@ -1,7 +1,11 @@
+/**
+ * routes/bid.js — 입찰 예약 API
+ *
+ * Google Sheets와 연동하여 입찰 예약을 등록한다.
+ * 경매장별 상품 링크 생성 포함.
+ * 마운트: /api/bid
+ */
 const express = require("express");
-const router = express.Router();
-const MyGoogleSheetsManager = require("../utils/googleSheets");
-const { pool } = require("../utils/DB");
 
 function formatDate(dateString) {
   const date = new Date(dateString);
@@ -35,7 +39,7 @@ router.post("/place-reservation", async (req, res) => {
     // 기존 입찰 확인
     const [existingBids] = await connection.query(
       "SELECT * FROM bids WHERE item_id = ? AND user_id = ?",
-      [itemId, req.session.user.id]
+      [itemId, req.session.user.id],
     );
 
     let bid = null;
@@ -66,7 +70,7 @@ router.post("/place-reservation", async (req, res) => {
       // 기존 초기 입찰 로직...
       const [items] = await connection.query(
         "SELECT * FROM crawled_items WHERE item_id = ?",
-        [itemId]
+        [itemId],
       );
       const item = items[0];
 
@@ -77,7 +81,7 @@ router.post("/place-reservation", async (req, res) => {
 
       const [result] = await connection.query(
         "INSERT INTO bids (item_id, user_id, first_price, image) VALUES (?, ?, ?, ?)",
-        [itemId, req.session.user.id, bidAmount, item.image]
+        [itemId, req.session.user.id, bidAmount, item.image],
       );
 
       const bidData = [
@@ -120,7 +124,7 @@ router.post("/place-reservation", async (req, res) => {
       try {
         await connection.query(
           "DELETE FROM bids WHERE item_id = ? AND user_id = ?",
-          [itemId, req.session.user.id]
+          [itemId, req.session.user.id],
         );
         console.log("Rolled back bid insertion due to error");
       } catch (deleteErr) {

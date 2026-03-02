@@ -1,4 +1,10 @@
-// routes/instant-purchases.js - 바로 구매 (Instant Purchase) 라우터
+/**
+ * routes/instant-purchases.js — 바로 구매 API
+ *
+ * BrandAuc 전용 즉시 구매 처리.
+ * 정산·수수료·환율·예치금 연동.
+ * 마운트: /api/instant-purchases
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

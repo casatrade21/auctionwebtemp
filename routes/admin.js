@@ -1,4 +1,11 @@
-// routes/admin.js
+/**
+ * routes/admin.js — 메인 서비스 관리자 API
+ *
+ * 관리자 설정(admin_settings) CRUD,
+ * 공지사항(이미지 포함) CRUD,
+ * 필터 설정 동기화 및 데이터 전처리 트리거.
+ * 마운트: /api/admin
+ */
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");

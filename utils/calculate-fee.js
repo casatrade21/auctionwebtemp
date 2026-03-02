@@ -1,15 +1,20 @@
-// utils/calculate-fee.js
-// UMD (Universal Module Definition) 패턴
-// Node.js와 브라우저 모두에서 동작
-
+/**
+ * calculate-fee.js — 수수료·관세·총액 계산 (UMD)
+ *
+ * Node.js와 브라우저 모두에서 동작하는 공유 모듈.
+ *  - calculateLocalFee  — 경매장별 현지 수수료 (eco/brand/star/mekiki/penguin)
+ *  - calculateCustomsDuty / calculateComplexCustomsDuty — 관세
+ *  - calculateVAT — 부가세
+ *  - calculateTotalPrice — JPY→KRW 총액 (환율 적용)
+ *  - calculateFee — 입찰금액 기준 수수료 (단계별 요율)
+ *
+ * 브라우저에서는 /api로 환율·수수료율을 자동 조회한다.
+ */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    // Node.js 환경
     module.exports = factory();
   } else {
     const exports = factory();
-
-    // 각 함수를 전역으로 노출
     root.fetchExchangeRate = exports.fetchExchangeRate;
     root.fetchUserCommissionRate = exports.fetchUserCommissionRate;
     root.calculateLocalFee = exports.calculateLocalFee;

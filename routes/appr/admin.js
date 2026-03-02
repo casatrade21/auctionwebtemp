@@ -1,4 +1,11 @@
-// routes/appr/admin.js
+/**
+ * routes/appr/admin.js — 감정 시스템 관리자 API
+ *
+ * 감정서 CRUD, 인증서 번호/QR 생성,
+ * 이미지 워터마크, PDF 생성/ZIP 다운로드.
+ * 관리자 전용.
+ * 마운트: /api/appr/admin
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../../utils/DB");

@@ -1,4 +1,9 @@
-// crawlers/penguinAuc.js
+/**
+ * penguinAuc.js — 펜괄옥션 (penguin-auction.jp) 크롤러
+ *
+ * auc_num: 5 | 동시성: 10 | HTML 파싱(cheerio) | 번역(translator)
+ * Value 크롤러 없음 (penguinAucCrawler만 익스포트)
+ */
 const cheerio = require("cheerio");
 const { AxiosCrawler } = require("./baseCrawler");
 const { processImagesInChunks } = require("../utils/processImage");

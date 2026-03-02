@@ -1,4 +1,10 @@
-// utils/logen.js - 로젠택배 API 래퍼
+/**
+ * logen.js — 로젠택배 API 래퍼
+ *
+ * 계약정보 조회, 송장 번호 채번, 주문 등록(라벨 출력),
+ * 화물추적, 배송 상태 매핑을 제공한다.
+ * 환경변수 LOGEN_IS_TEST로 테스트/운영 분기.
+ */
 const axios = require("axios");
 
 const IS_TEST = (process.env.LOGEN_IS_TEST || "true") === "true";
@@ -9,7 +15,7 @@ const USER_ID = process.env.LOGEN_USER_ID || "";
 const CUST_CD = process.env.LOGEN_CUST_CD || "";
 const TIMEOUT = Number(process.env.LOGEN_TIMEOUT) || 30000;
 
-// 발신자 기본값 (.env)
+// 발신자 기본값
 const DEFAULT_SENDER = {
   name: process.env.LOGEN_SENDER_NAME || "카사스트레이드",
   tel: process.env.LOGEN_SENDER_TEL || "",

@@ -1,4 +1,9 @@
-// routes/wishlist.js
+/**
+ * routes/wishlist.js — 즐겨찾기 API
+ *
+ * 상품별 1~3번 즐겨찾기 슬롯으로 추가/삭제/조회.
+ * 마운트: /api/wishlist
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");
@@ -24,7 +29,7 @@ router.post("/", async (req, res) => {
     // Check if item exists
     const [items] = await pool.query(
       "SELECT item_id FROM crawled_items WHERE item_id = ?",
-      [itemId]
+      [itemId],
     );
 
     if (items.length === 0) {
@@ -34,7 +39,7 @@ router.post("/", async (req, res) => {
     // Check if item is already in wishlist with the same favorite number
     const [existingItems] = await pool.query(
       "SELECT * FROM wishlists WHERE user_id = ? AND item_id = ? AND favorite_number = ?",
-      [userId, itemId, favoriteNumber]
+      [userId, itemId, favoriteNumber],
     );
 
     if (existingItems.length > 0) {
@@ -46,7 +51,7 @@ router.post("/", async (req, res) => {
     // Add to wishlist with favorite number
     await pool.query(
       "INSERT INTO wishlists (user_id, item_id, favorite_number) VALUES (?, ?, ?)",
-      [userId, itemId, favoriteNumber]
+      [userId, itemId, favoriteNumber],
     );
 
     res.status(201).json({ message: "Item added to wishlist" });
@@ -69,7 +74,7 @@ router.get("/", async (req, res) => {
       WHERE w.user_id = ?
       ORDER BY w.favorite_number, ci.item_id
       `,
-      [userId]
+      [userId],
     );
 
     res.json(wishlist);
@@ -94,13 +99,13 @@ router.delete("/", async (req, res) => {
     if (favoriteNumber) {
       await pool.query(
         "DELETE FROM wishlists WHERE user_id = ? AND item_id = ? AND favorite_number = ?",
-        [userId, itemId, favoriteNumber]
+        [userId, itemId, favoriteNumber],
       );
     } else {
       // Otherwise, delete all wishlist entries for this item
       await pool.query(
         "DELETE FROM wishlists WHERE user_id = ? AND item_id = ?",
-        [userId, itemId]
+        [userId, itemId],
       );
     }
 
@@ -134,7 +139,7 @@ router.put("/", async (req, res) => {
     // Check if the item with oldFavoriteNumber exists
     const [existingItems] = await pool.query(
       "SELECT * FROM wishlists WHERE user_id = ? AND item_id = ? AND favorite_number = ?",
-      [userId, itemId, oldFavoriteNumber]
+      [userId, itemId, oldFavoriteNumber],
     );
 
     if (existingItems.length === 0) {
@@ -146,7 +151,7 @@ router.put("/", async (req, res) => {
     // Check if the item with newFavoriteNumber already exists
     const [conflictItems] = await pool.query(
       "SELECT * FROM wishlists WHERE user_id = ? AND item_id = ? AND favorite_number = ?",
-      [userId, itemId, newFavoriteNumber]
+      [userId, itemId, newFavoriteNumber],
     );
 
     if (conflictItems.length > 0) {
@@ -158,7 +163,7 @@ router.put("/", async (req, res) => {
     // Update favorite number
     await pool.query(
       "UPDATE wishlists SET favorite_number = ? WHERE user_id = ? AND item_id = ? AND favorite_number = ?",
-      [newFavoriteNumber, userId, itemId, oldFavoriteNumber]
+      [newFavoriteNumber, userId, itemId, oldFavoriteNumber],
     );
 
     res.json({ message: "Favorite number updated" });

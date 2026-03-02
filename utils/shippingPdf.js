@@ -1,4 +1,9 @@
-// utils/shippingPdf.js - 송장 PDF 생성
+/**
+ * shippingPdf.js — 송장 라벨 PDF 생성기 (pdf-lib)
+ *
+ * 100mm×150mm 라벨: 발신/수신 정보, QR(송장번호), 지역 배지(제주/도서/산간).
+ * generateShippingLabelsA4: A4에 2×3 배치(6장/페이지).
+ */
 const { PDFDocument, rgb, StandardFonts } = require("pdf-lib");
 const fs = require("fs");
 const path = require("path");

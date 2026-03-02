@@ -1,6 +1,9 @@
-// utils/excel.js
-// 엑셀 생성 유틸리티 (이미지 임베딩 지원)
-
+/**
+ * excel.js — 엑셀 생성 유틸리티 (ExcelJS)
+ *
+ * 이미지 임베딩, 스타일 헤더, 스트리밍 응답 지원.
+ * createWorkbook → workbookToBuffer 또는 streamWorkbookToResponse
+ */
 const ExcelJS = require("exceljs");
 const axios = require("axios");
 const sharp = require("sharp");

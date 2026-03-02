@@ -1,5 +1,11 @@
+/**
+ * adminActivityLogger.js — 관리자 활동 로그 미들웨어
+ *
+ * POST/PUT/PATCH/DELETE 요청을 감지하여 admin_activity_logs에 기록.
+ * 라우트별 한국어 액션명/요약을 변환하고,
+ * 입찰/구매 데이터로 로그를 보강한다.
+ */
 const { pool } = require("./DB");
-const { isAdminUser } = require("./adminAuth");
 
 const TRACKED_PREFIXES = [
   "/api/admin",

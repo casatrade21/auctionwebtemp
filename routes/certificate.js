@@ -1,4 +1,9 @@
-// routes/certificate.js
+/**
+ * routes/certificate.js — 인증서 PDF 생성/조회 API
+ *
+ * 감정 완료 아이템의 PDF 인증서를 QR 코드와 함께 생성.
+ * 인증 필수.
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

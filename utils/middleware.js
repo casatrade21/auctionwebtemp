@@ -1,4 +1,9 @@
-// utils/middleware.js
+/**
+ * middleware.js — 공통 인증 미들웨어
+ *
+ * isAuthenticated — 로그인 여부 확인 (401)
+ * isAdmin        — 관리자 여부 확인 (403)
+ */
 const { isAdminUser } = require("./adminAuth");
 
 const isAuthenticated = (req, res, next) => {

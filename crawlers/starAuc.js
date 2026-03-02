@@ -1,7 +1,9 @@
+/**
+ * starAuc.js — 스타바이어즈옥션 (starbuyers-global-auction.com) 크롤러
+ *
+ * auc_num: 3 | 동시성: 3 | HTML(cheerio) + FormData | 단일 클라이언트
+ */
 const cheerio = require("cheerio");
-const { AxiosCrawler } = require("./baseCrawler");
-const { processImagesInChunks } = require("../utils/processImage");
-const FormData = require("form-data");
 
 let pLimit;
 (async () => {
@@ -147,7 +149,7 @@ class StarAucCrawler extends AxiosCrawler {
       // CSRF 토큰 추출
       const $ = cheerio.load(response.data, { xmlMode: false });
       const csrfToken = $(this.config.signinSelectors.csrfToken).attr(
-        "content"
+        "content",
       );
 
       if (!csrfToken) {
@@ -174,7 +176,7 @@ class StarAucCrawler extends AxiosCrawler {
           validateStatus: function (status) {
             return status >= 200 && status < 400;
           },
-        }
+        },
       );
 
       // 로그인 후 검증
@@ -200,7 +202,7 @@ class StarAucCrawler extends AxiosCrawler {
   async directBid(item_id, price) {
     try {
       console.log(
-        `Placing direct bid for item ${item_id} with price ${price}...`
+        `Placing direct bid for item ${item_id} with price ${price}...`,
       );
 
       // 로그인 확인
@@ -211,7 +213,7 @@ class StarAucCrawler extends AxiosCrawler {
 
       // 쿠키에서 XSRF 토큰 추출
       const cookies = await clientInfo.cookieJar.getCookies(
-        "https://www.starbuyers-global-auction.com"
+        "https://www.starbuyers-global-auction.com",
       );
       const xsrfCookie = cookies.find((cookie) => cookie.key === "XSRF-TOKEN");
 
@@ -244,7 +246,7 @@ class StarAucCrawler extends AxiosCrawler {
           validateStatus: function (status) {
             return status >= 200 && status < 400;
           },
-        }
+        },
       );
 
       // 응답 처리
@@ -306,7 +308,7 @@ class StarAucCrawler extends AxiosCrawler {
       const clientInfo = this.getClient();
 
       const cookies = await clientInfo.cookieJar.getCookies(
-        "https://www.starbuyers-global-auction.com"
+        "https://www.starbuyers-global-auction.com",
       );
       const xsrfCookie = cookies.find((cookie) => cookie.key === "XSRF-TOKEN");
 
@@ -337,7 +339,7 @@ class StarAucCrawler extends AxiosCrawler {
           validateStatus: function (status) {
             return status >= 200 && status < 400;
           },
-        }
+        },
       );
 
       if (bidResponse.status === 200 && bidResponse.data?.status) {
@@ -385,7 +387,7 @@ class StarAucCrawler extends AxiosCrawler {
 
         // window.items = JSON.parse('...') 패턴 찾기 (목록 페이지)
         let dataMatch = scriptContent.match(
-          /window\.items\s*=\s*JSON\.parse\('(.+?)'\)/s
+          /window\.items\s*=\s*JSON\.parse\('(.+?)'\)/s,
         );
 
         if (dataMatch && dataMatch[1]) {
@@ -406,11 +408,11 @@ class StarAucCrawler extends AxiosCrawler {
 
         // window.item_data = {...} 패턴 찾기 (상세 페이지)
         dataMatch = scriptContent.match(
-          /window\.item_data\s*=\s*(\{[\s\S]+?\})\s*window\.api/s
+          /window\.item_data\s*=\s*(\{[\s\S]+?\})\s*window\.api/s,
         );
         if (!dataMatch) {
           dataMatch = scriptContent.match(
-            /window\.item_data\s*=\s*(\{[\s\S]+?\})/s
+            /window\.item_data\s*=\s*(\{[\s\S]+?\})/s,
           );
         }
 
@@ -418,13 +420,13 @@ class StarAucCrawler extends AxiosCrawler {
           let objectLiteral = dataMatch[1].trim();
 
           const jsonParseMatches = objectLiteral.match(
-            /JSON\.parse\('(.+?)'\)/g
+            /JSON\.parse\('(.+?)'\)/g,
           );
           if (jsonParseMatches) {
             for (const jsonParseMatch of jsonParseMatches) {
               try {
                 const innerMatch = jsonParseMatch.match(
-                  /JSON\.parse\('(.+?)'\)/
+                  /JSON\.parse\('(.+?)'\)/,
                 );
                 if (innerMatch && innerMatch[1]) {
                   const innerJsonString = innerMatch[1]
@@ -437,7 +439,7 @@ class StarAucCrawler extends AxiosCrawler {
                   const parsedValue = JSON.parse(innerJsonString);
                   objectLiteral = objectLiteral.replace(
                     jsonParseMatch,
-                    JSON.stringify(parsedValue)
+                    JSON.stringify(parsedValue),
                   );
                 }
               } catch (error) {
@@ -491,7 +493,7 @@ class StarAucCrawler extends AxiosCrawler {
       try {
         const scriptData = await this.parseScriptData(
           response.data,
-          this.config.crawlSelectors.scriptData
+          this.config.crawlSelectors.scriptData,
         );
 
         if (scriptData && scriptData.last_page) {
@@ -537,13 +539,13 @@ class StarAucCrawler extends AxiosCrawler {
     categoryId,
     page,
     existingIds = new Set(),
-    skipImageProcessing = false
+    skipImageProcessing = false,
   ) {
     const clientInfo = this.getClient();
 
     return this.retryOperation(async () => {
       console.log(
-        `Crawling page ${page} in category ${categoryId} with ${clientInfo.name}...`
+        `Crawling page ${page} in category ${categoryId} with ${clientInfo.name}...`,
       );
       const url =
         this.config.searchUrl + this.config.searchParams(categoryId, page);
@@ -553,7 +555,7 @@ class StarAucCrawler extends AxiosCrawler {
 
       const scriptData = await this.parseScriptData(
         response.data,
-        this.config.crawlSelectors.scriptData
+        this.config.crawlSelectors.scriptData,
       );
 
       if (!scriptData) {
@@ -564,7 +566,7 @@ class StarAucCrawler extends AxiosCrawler {
       const [filteredItems, remainItems] = this.filterHandles(
         $,
         scriptData,
-        existingIds
+        existingIds,
       );
 
       if (filteredItems.length === 0) {
@@ -577,7 +579,7 @@ class StarAucCrawler extends AxiosCrawler {
         .filter((item) => item !== null);
 
       console.log(
-        `${pageItems.length}개 아이템 추출 완료, 페이지 ${page} (${clientInfo.name})`
+        `${pageItems.length}개 아이템 추출 완료, 페이지 ${page} (${clientInfo.name})`,
       );
 
       let finalItems;
@@ -610,7 +612,7 @@ class StarAucCrawler extends AxiosCrawler {
       title: title,
       brand: title.split(" ")[0],
       rank: this.convertFullWidthToAscii(
-        scriptData.fixRank?.replace(/\\uff/g, "")
+        scriptData.fixRank?.replace(/\\uff/g, ""),
       ),
       starting_price: parseInt(scriptData.startingPrice, 10),
       image: scriptData.thumbnailUrl,
@@ -634,7 +636,7 @@ class StarAucCrawler extends AxiosCrawler {
 
     return this.retryOperation(async () => {
       console.log(
-        `Crawling details for item ${itemId} with ${clientInfo.name}...`
+        `Crawling details for item ${itemId} with ${clientInfo.name}...`,
       );
       const url = this.config.detailUrl(itemId);
 
@@ -643,7 +645,7 @@ class StarAucCrawler extends AxiosCrawler {
 
       const scriptData = await this.parseScriptData(
         response.data,
-        this.config.crawlDetailSelectors.scriptData
+        this.config.crawlDetailSelectors.scriptData,
       );
 
       if (!scriptData) {
@@ -737,7 +739,7 @@ class StarAucCrawler extends AxiosCrawler {
 
         for (let page = 1; page <= totalPages; page++) {
           pagePromises.push(
-            limit(() => this.crawlPage(categoryId, page, existingIds, true))
+            limit(() => this.crawlPage(categoryId, page, existingIds, true)),
           );
         }
 
@@ -751,7 +753,7 @@ class StarAucCrawler extends AxiosCrawler {
         if (categoryItems && categoryItems.length > 0) {
           allCrawledItems.push(...categoryItems);
           console.log(
-            `Completed crawl for category ${categoryId}. Items found: ${categoryItems.length}`
+            `Completed crawl for category ${categoryId}. Items found: ${categoryItems.length}`,
           );
         } else {
           console.log(`No items found for category ${categoryId}`);
@@ -765,13 +767,13 @@ class StarAucCrawler extends AxiosCrawler {
 
       // 전체 이미지 일괄 처리
       console.log(
-        `Starting image processing for ${allCrawledItems.length} items...`
+        `Starting image processing for ${allCrawledItems.length} items...`,
       );
       const itemsWithImages = allCrawledItems.filter((item) => item.image);
       const finalProcessedItems = await processImagesInChunks(
         itemsWithImages,
         "products",
-        3
+        3,
       );
 
       // 이미지가 없는 아이템들도 포함
@@ -779,13 +781,13 @@ class StarAucCrawler extends AxiosCrawler {
       const allFinalItems = [...finalProcessedItems, ...itemsWithoutImages];
 
       console.log(
-        `Crawling completed for all categories. Total items: ${allFinalItems.length}`
+        `Crawling completed for all categories. Total items: ${allFinalItems.length}`,
       );
 
       const endTime = Date.now();
       const executionTime = endTime - startTime;
       console.log(
-        `Operation completed in ${this.formatExecutionTime(executionTime)}`
+        `Operation completed in ${this.formatExecutionTime(executionTime)}`,
       );
 
       return allFinalItems;
@@ -800,7 +802,7 @@ class StarAucCrawler extends AxiosCrawler {
       const limit = pLimit(LIMIT1);
       const startTime = Date.now();
       console.log(
-        `Starting StarAuc updates crawl at ${new Date().toISOString()}`
+        `Starting StarAuc updates crawl at ${new Date().toISOString()}`,
       );
 
       await this.login();
@@ -818,7 +820,7 @@ class StarAucCrawler extends AxiosCrawler {
           limit(async () => {
             console.log(`Crawling update page ${page} of ${totalPages}`);
             return await this.crawlUpdatePage(page);
-          })
+          }),
         );
       }
 
@@ -836,8 +838,8 @@ class StarAucCrawler extends AxiosCrawler {
       const executionTime = endTime - startTime;
       console.log(
         `StarAuc update crawl operation completed in ${this.formatExecutionTime(
-          executionTime
-        )}`
+          executionTime,
+        )}`,
       );
 
       return allCrawledItems;
@@ -860,7 +862,7 @@ class StarAucCrawler extends AxiosCrawler {
       // crawlPage와 동일한 스크립트 데이터 추출
       const scriptData = await this.parseScriptData(
         response.data,
-        this.config.crawlSelectors.scriptData
+        this.config.crawlSelectors.scriptData,
       );
 
       if (!scriptData) {
@@ -872,7 +874,7 @@ class StarAucCrawler extends AxiosCrawler {
       const [filteredItems, remainItems] = this.filterHandles(
         $,
         scriptData,
-        new Set()
+        new Set(),
       );
 
       if (filteredItems.length === 0) {
@@ -886,7 +888,7 @@ class StarAucCrawler extends AxiosCrawler {
         .filter((item) => item !== null);
 
       console.log(
-        `${pageItems.length}개 업데이트 아이템 추출 완료, 페이지 ${page} (${clientInfo.name})`
+        `${pageItems.length}개 업데이트 아이템 추출 완료, 페이지 ${page} (${clientInfo.name})`,
       );
 
       return pageItems;
@@ -919,7 +921,7 @@ class StarAucCrawler extends AxiosCrawler {
 
     return this.retryOperation(async () => {
       console.log(
-        `Crawling update info for item ${itemId} with ${clientInfo.name}...`
+        `Crawling update info for item ${itemId} with ${clientInfo.name}...`,
       );
 
       const url = this.config.detailUrl(itemId);
@@ -927,7 +929,7 @@ class StarAucCrawler extends AxiosCrawler {
 
       const scriptData = await this.parseScriptData(
         response.data,
-        this.config.crawlDetailSelectors.scriptData
+        this.config.crawlDetailSelectors.scriptData,
       );
 
       if (!scriptData) {
@@ -940,7 +942,7 @@ class StarAucCrawler extends AxiosCrawler {
       if (scriptData.starting_price > currentPrice)
         currentPrice = scriptData.starting_price;
       const scheduledDate = this.extractDate(
-        scriptData.endAt || scriptData.ended_at
+        scriptData.endAt || scriptData.ended_at,
       );
 
       return {
@@ -972,11 +974,11 @@ class StarAucCrawler extends AxiosCrawler {
           } catch (error) {
             console.error(
               `Error crawling update for item ${itemId}:`,
-              error.message
+              error.message,
             );
             return null;
           }
-        })
+        }),
       );
 
       await Promise.all(promises);
@@ -1028,7 +1030,7 @@ class StarAucCrawler extends AxiosCrawler {
 
         const amountText = $element
           .find(
-            '[data-head="Successful bid total price / Amount"] p:first-child'
+            '[data-head="Successful bid total price / Amount"] p:first-child',
           )
           .text()
           .trim();
@@ -1081,7 +1083,7 @@ class StarAucValueCrawler extends AxiosCrawler {
       // CSRF 토큰 추출
       const $ = cheerio.load(response.data, { xmlMode: false });
       const csrfToken = $(this.config.signinSelectors.csrfToken).attr(
-        "content"
+        "content",
       );
 
       if (!csrfToken) {
@@ -1108,7 +1110,7 @@ class StarAucValueCrawler extends AxiosCrawler {
           validateStatus: function (status) {
             return status >= 200 && status < 400;
           },
-        }
+        },
       );
 
       // 로그인 후 검증
@@ -1141,11 +1143,11 @@ class StarAucValueCrawler extends AxiosCrawler {
 
         // window.item_data = {...} 패턴 찾기 (상세 페이지)
         let dataMatch = scriptContent.match(
-          /window\.item_data\s*=\s*(\{[\s\S]+?\})\s*window\.api/s
+          /window\.item_data\s*=\s*(\{[\s\S]+?\})\s*window\.api/s,
         );
         if (!dataMatch) {
           dataMatch = scriptContent.match(
-            /window\.item_data\s*=\s*(\{[\s\S]+?\})/s
+            /window\.item_data\s*=\s*(\{[\s\S]+?\})/s,
           );
         }
 
@@ -1155,14 +1157,14 @@ class StarAucValueCrawler extends AxiosCrawler {
 
           // JSON.parse 문자열 찾아서 처리
           const jsonParseMatches = objectLiteral.match(
-            /JSON\.parse\('(.+?)'\)/g
+            /JSON\.parse\('(.+?)'\)/g,
           );
           if (jsonParseMatches) {
             for (const jsonParseMatch of jsonParseMatches) {
               try {
                 // 원본 JSON.parse 문자열 추출
                 const innerMatch = jsonParseMatch.match(
-                  /JSON\.parse\('(.+?)'\)/
+                  /JSON\.parse\('(.+?)'\)/,
                 );
                 if (innerMatch && innerMatch[1]) {
                   // 이스케이프된 문자 처리
@@ -1178,7 +1180,7 @@ class StarAucValueCrawler extends AxiosCrawler {
                   // 원본 JSON.parse 문을 파싱된 값의 문자열로 대체
                   objectLiteral = objectLiteral.replace(
                     jsonParseMatch,
-                    JSON.stringify(parsedValue)
+                    JSON.stringify(parsedValue),
                   );
                 }
               } catch (error) {
@@ -1279,9 +1281,9 @@ class StarAucValueCrawler extends AxiosCrawler {
             page,
             existingIds,
             chunk.months,
-            true // skipImageProcessing
-          )
-        )
+            true, // skipImageProcessing
+          ),
+        ),
       );
     }
 
@@ -1319,8 +1321,8 @@ class StarAucValueCrawler extends AxiosCrawler {
         for (let page = 1; page <= totalPages; page++) {
           pagePromises.push(
             limit(() =>
-              this.crawlPage(categoryId, page, existingIds, months, true)
-            )
+              this.crawlPage(categoryId, page, existingIds, months, true),
+            ),
           );
         }
 
@@ -1336,7 +1338,7 @@ class StarAucValueCrawler extends AxiosCrawler {
         if (categoryItems && categoryItems.length > 0) {
           allCrawledItems.push(...categoryItems);
           console.log(
-            `Completed crawl for category ${categoryId}. Items found: ${categoryItems.length}`
+            `Completed crawl for category ${categoryId}. Items found: ${categoryItems.length}`,
           );
         } else {
           console.log(`No items found for category ${categoryId}`);
@@ -1350,13 +1352,13 @@ class StarAucValueCrawler extends AxiosCrawler {
 
       // 전체 이미지 일괄 처리
       console.log(
-        `Starting image processing for ${allCrawledItems.length} items...`
+        `Starting image processing for ${allCrawledItems.length} items...`,
       );
       const itemsWithImages = allCrawledItems.filter((item) => item.image);
       const finalProcessedItems = await processImagesInChunks(
         itemsWithImages,
         "values",
-        3
+        3,
       );
 
       // 이미지가 없는 아이템들도 포함
@@ -1364,13 +1366,13 @@ class StarAucValueCrawler extends AxiosCrawler {
       const allFinalItems = [...finalProcessedItems, ...itemsWithoutImages];
 
       console.log(
-        `Crawling completed for all categories. Total items: ${allFinalItems.length}`
+        `Crawling completed for all categories. Total items: ${allFinalItems.length}`,
       );
 
       const endTime = Date.now();
       const executionTime = endTime - startTime;
       console.log(
-        `Operation completed in ${this.formatExecutionTime(executionTime)}`
+        `Operation completed in ${this.formatExecutionTime(executionTime)}`,
       );
 
       return allFinalItems;
@@ -1385,13 +1387,13 @@ class StarAucValueCrawler extends AxiosCrawler {
     page,
     existingIds = new Set(),
     months = 3,
-    skipImageProcessing = false
+    skipImageProcessing = false,
   ) {
     const clientInfo = this.getClient();
 
     return this.retryOperation(async () => {
       console.log(
-        `Crawling page ${page} in category ${categoryId} with ${clientInfo.name}...`
+        `Crawling page ${page} in category ${categoryId} with ${clientInfo.name}...`,
       );
       const url =
         this.config.searchUrl +
@@ -1425,7 +1427,7 @@ class StarAucValueCrawler extends AxiosCrawler {
       }
 
       console.log(
-        `Processed ${finalItems.length} items from page ${page} (${clientInfo.name})`
+        `Processed ${finalItems.length} items from page ${page} (${clientInfo.name})`,
       );
 
       return finalItems;
@@ -1475,7 +1477,7 @@ class StarAucValueCrawler extends AxiosCrawler {
         .text()
         .trim();
       const finalPrice = this.currencyToInt(
-        finalPriceText.replace("yen", "").trim()
+        finalPriceText.replace("yen", "").trim(),
       );
 
       // 이미지 URL 추출
@@ -1523,7 +1525,7 @@ class StarAucValueCrawler extends AxiosCrawler {
 
     return this.retryOperation(async () => {
       console.log(
-        `Crawling details for item ${itemId} with ${clientInfo.name}...`
+        `Crawling details for item ${itemId} with ${clientInfo.name}...`,
       );
       const url = this.config.detailUrl(itemId);
 
@@ -1533,7 +1535,7 @@ class StarAucValueCrawler extends AxiosCrawler {
       // 스크립트 데이터 추출
       const scriptData = await this.parseScriptData(
         response.data,
-        this.config.crawlDetailSelectors.scriptData
+        this.config.crawlDetailSelectors.scriptData,
       );
 
       // 이미지 추출

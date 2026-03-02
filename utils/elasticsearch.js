@@ -1,4 +1,10 @@
-// utils/elasticsearch.js
+/**
+ * elasticsearch.js — Elasticsearch 매니저 (싱글톤)
+ *
+ * 커넥션 관리, 인덱스 CRUD, 퍼지 멀티매치 검색,
+ * 단건/볈크 인덱싱, 문서 삭제, 헬스체크.
+ * 검색 결과는 item_id 배열로 반환하여 DB 조회와 조합해 사용한다.
+ */
 const { Client } = require("@elastic/elasticsearch");
 
 class ElasticsearchManager {
@@ -12,7 +18,7 @@ class ElasticsearchManager {
    * ES 연결 초기화
    */
   async connect(
-    url = process.env.ELASTICSEARCH_URL || "http://localhost:9200"
+    url = process.env.ELASTICSEARCH_URL || "http://localhost:9200",
   ) {
     try {
       this.client = new Client({

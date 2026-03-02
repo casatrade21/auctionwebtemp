@@ -1,8 +1,17 @@
-// routes/detail.js
+/**
+ * routes/detail.js — 상품 상세 API
+ *
+ * processItem으로 아이템 데이터를 조회/크롤링하고,
+ * 설명을 AWS Translate로 한국어 번역한다 (LRU 캐시 500건).
+ * 마운트: /api/detail
+ */
 const express = require("express");
 const router = express.Router();
 const { processItem } = require("../utils/processItem"); // 경로는 실제 위치에 맞게 조정하세요
-const { TranslateClient, TranslateTextCommand } = require("@aws-sdk/client-translate");
+const {
+  TranslateClient,
+  TranslateTextCommand,
+} = require("@aws-sdk/client-translate");
 
 const translateClient = new TranslateClient({
   region: process.env.AWS_REGION || "ap-northeast-2",
@@ -30,7 +39,8 @@ async function translateDescriptionToKo(text) {
   const sourceText = String(text || "").trim();
   if (!sourceText) return "";
   if (isKoreanText(sourceText)) return sourceText;
-  if (descriptionKoCache.has(sourceText)) return descriptionKoCache.get(sourceText);
+  if (descriptionKoCache.has(sourceText))
+    return descriptionKoCache.get(sourceText);
 
   try {
     const result = await translateClient.send(
@@ -44,7 +54,10 @@ async function translateDescriptionToKo(text) {
     setDescriptionCache(sourceText, translated);
     return translated;
   } catch (error) {
-    console.error("[detail] description ko translate failed:", error?.message || error);
+    console.error(
+      "[detail] description ko translate failed:",
+      error?.message || error,
+    );
     return sourceText;
   }
 }
@@ -55,7 +68,8 @@ router.post("/item-details/:itemId", async (req, res) => {
   try {
     const { itemId } = req.params;
     const { aucNum, translateDescription } = req.body || {};
-    const shouldTranslateKo = String(translateDescription || "").toLowerCase() === "ko";
+    const shouldTranslateKo =
+      String(translateDescription || "").toLowerCase() === "ko";
     // 세션에서 사용자 ID 가져오기 (로그인하지 않았으면 undefined)
     const userId = req.session?.user?.id; // 옵셔널 체이닝 사용
 
@@ -66,11 +80,21 @@ router.post("/item-details/:itemId", async (req, res) => {
     }
 
     // 한국어 번역 요청 시 응답 데이터를 받아 description_ko를 추가해서 반환
-    const item = await processItem(itemId, false, null, true, userId, 1, aucNum);
+    const item = await processItem(
+      itemId,
+      false,
+      null,
+      true,
+      userId,
+      1,
+      aucNum,
+    );
     if (!item) {
       return res.status(404).json({ message: "Item not found" });
     }
-    const descriptionKo = await translateDescriptionToKo(item.description || "");
+    const descriptionKo = await translateDescriptionToKo(
+      item.description || "",
+    );
     return res.json({
       ...item,
       description_ko: descriptionKo || item.description || "",

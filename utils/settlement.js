@@ -1,4 +1,10 @@
-// utils/settlement.js
+/**
+ * settlement.js — 일별 정산 생성/업데이트
+ *
+ * 낙찰 아이템(live/direct/instant) 집계 →
+ * JPY→KRW 총액(스냅샷 환율) → 수수료·감정료·수선료 계산 →
+ * 개인/기업 결제 로직 분기 → 예치금 차액 조정.
+ */
 const { pool } = require("./DB");
 const { calculateFee, calculateTotalPrice } = require("./calculate-fee");
 const { getExchangeRate } = require("./exchange-rate");

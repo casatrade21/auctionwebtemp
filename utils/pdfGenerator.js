@@ -1,4 +1,10 @@
-// utils/pdfGenerator.js
+/**
+ * pdfGenerator.js — 감정서 PDF 생성기 (pdf-lib)
+ *
+ * 템플릿 PDF 위에 한관 텍스트(NotoSansKR), QR 코드,
+ * 상품 이미지를 좌표 기반으로 배치한다.
+ * Lazy 생성(데이터 변경 시만 재생성), ZIP 번들링 지원.
+ */
 const { PDFDocument, rgb, StandardFonts } = require("pdf-lib");
 const fs = require("fs");
 const path = require("path");

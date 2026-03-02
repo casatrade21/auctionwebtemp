@@ -1,4 +1,10 @@
-// routes/users.js
+/**
+ * routes/users.js — 사용자 관리 API
+ *
+ * 회원가입, 프로필 수정, 관리자 사용자 조회/수정,
+ * Google Sheets 동기화. 비밀번호 SHA-256.
+ * 마운트: /api/users
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

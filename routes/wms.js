@@ -1,9 +1,11 @@
+/**
+ * routes/wms.js — 창고 관리 시스템(WMS) API
+ *
+ * 아이템 위치 존(도착/수선/HOLD/출고) 관리,
+ * 입찰 상태 ↔ WMS 주기적 백필(1분). 관리자 전용.
+ * 마운트: /api/wms
+ */
 const express = require("express");
-const { pool } = require("../utils/DB");
-const { requireAdmin } = require("../utils/adminAuth");
-const {
-  backfillCompletedWmsItemsByBidStatus,
-} = require("../utils/wms-bid-sync");
 
 const router = express.Router();
 const BOARD_BACKFILL_INTERVAL_MS = 60 * 1000;

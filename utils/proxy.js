@@ -1,4 +1,10 @@
-// utils/proxy.js
+/**
+ * proxy.js — 프록시 매니저 (ProxyManager)
+ *
+ * .env의 PROXY_IPS로 직접 연결 + 프록시 클라이언트를 생성.
+ * 쿠키 지원(tough-cookie), axios 기반.
+ * 크롤러와 이미지 다운로드에서 사용.
+ */
 const tough = require("tough-cookie");
 const axios = require("axios");
 const { HttpsProxyAgent } = require("https-proxy-agent");
@@ -191,7 +197,7 @@ class ProxyManager {
           index: client.index,
           ...result,
         };
-      })
+      }),
     );
 
     return results.map((result, index) => ({

@@ -1,4 +1,10 @@
-// routes/appr/payments.js
+/**
+ * routes/appr/payments.js — 결제 API (NicePay)
+ *
+ * 나이스페이 콜백 처리, 결제 승인, 취소.
+ * 프로덕션/샌드박스 자동 분기.
+ * 마운트: /api/appr/payments
+ */
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../../utils/DB");
@@ -63,7 +69,7 @@ router.post("/prepare", isAuthenticated, async (req, res) => {
             ? "restoration"
             : "appraisal"
           : null,
-      ]
+      ],
     );
 
     // 나이스페이 SDK 파라미터 생성
@@ -124,7 +130,7 @@ router.post("/approve", isAuthenticated, async (req, res) => {
     // 결제 정보 조회
     const [paymentRows] = await conn.query(
       "SELECT * FROM payments WHERE order_id = ? AND user_id = ?",
-      [orderId, req.session.user.id]
+      [orderId, req.session.user.id],
     );
 
     if (paymentRows.length === 0) {
@@ -155,7 +161,7 @@ router.post("/approve", isAuthenticated, async (req, res) => {
             "Content-Type": "application/json",
             Authorization: generateBasicAuthHeader(),
           },
-        }
+        },
       );
 
       // 나이스페이 응답 처리
@@ -183,7 +189,7 @@ router.post("/approve", isAuthenticated, async (req, res) => {
             tid,
             JSON.stringify(response.data),
             payment.id,
-          ]
+          ],
         );
 
         // 관련 리소스 처리
@@ -217,7 +223,7 @@ router.post("/approve", isAuthenticated, async (req, res) => {
         // 결제 실패 처리
         await conn.query(
           "UPDATE payments SET status = ?, raw_response_data = ? WHERE id = ?",
-          ["failed", JSON.stringify(response.data), payment.id]
+          ["failed", JSON.stringify(response.data), payment.id],
         );
 
         res.status(400).json({
@@ -238,7 +244,7 @@ router.post("/approve", isAuthenticated, async (req, res) => {
           "approval_api_failed",
           JSON.stringify(error.response?.data || error.message),
           payment.id,
-        ]
+        ],
       );
 
       res.status(500).json({
@@ -262,7 +268,7 @@ async function handleQuickLinkSubscription(conn, userId) {
   // 사용자 크레딧 정보 조회
   const [userRows] = await conn.query(
     "SELECT * FROM appr_users WHERE user_id = ?",
-    [userId]
+    [userId],
   );
 
   if (userRows.length === 0) {
@@ -280,7 +286,7 @@ async function handleQuickLinkSubscription(conn, userId) {
         "paid",
         new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30일 후
         new Date(),
-      ]
+      ],
     );
   } else {
     // 기존 사용자인 경우 업데이트
@@ -302,7 +308,7 @@ async function handleQuickLinkSubscription(conn, userId) {
         newExpiry,
         new Date(),
         userId,
-      ]
+      ],
     );
   }
 }
@@ -312,7 +318,7 @@ async function handleCertificateIssue(conn, appraisalId) {
   // 감정 상태 업데이트
   await conn.query(
     "UPDATE appraisals SET credit_deducted = true WHERE id = ?",
-    [appraisalId]
+    [appraisalId],
   );
 }
 
@@ -321,7 +327,7 @@ async function handleRestorationService(conn, restorationId) {
   // 복원 상태 업데이트
   await conn.query(
     "UPDATE restoration_requests SET status = 'in_progress' WHERE id = ?",
-    [restorationId]
+    [restorationId],
   );
 }
 
@@ -335,7 +341,7 @@ router.get("/:orderId", isAuthenticated, async (req, res) => {
 
     const [rows] = await conn.query(
       "SELECT * FROM payments WHERE order_id = ? AND user_id = ?",
-      [orderId, req.session.user.id]
+      [orderId, req.session.user.id],
     );
 
     if (rows.length === 0) {
@@ -400,7 +406,7 @@ router.post("/webhook", async (req, res) => {
     // 결제 정보 조회
     const [rows] = await conn.query(
       "SELECT * FROM payments WHERE order_id = ?",
-      [orderId]
+      [orderId],
     );
 
     if (rows.length === 0) {
@@ -416,7 +422,7 @@ router.post("/webhook", async (req, res) => {
     if (parseFloat(payment.amount) !== parseFloat(amount)) {
       await conn.query(
         "UPDATE payments SET status = ?, raw_response_data = ? WHERE id = ?",
-        ["auth_signature_mismatch", JSON.stringify(req.body), payment.id]
+        ["auth_signature_mismatch", JSON.stringify(req.body), payment.id],
       );
       return res.status(400).send("Amount Mismatch");
     }
@@ -457,7 +463,7 @@ router.post("/webhook", async (req, res) => {
         receiptUrl || null,
         paidAt || null,
         payment.id,
-      ]
+      ],
     );
 
     // 관련 리소스 처리 (성공인 경우)

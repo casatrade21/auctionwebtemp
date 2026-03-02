@@ -1,3 +1,11 @@
+/**
+ * wms-bid-sync.js — WMS ↔ 입찰 상태 양방향 동기화
+ *
+ * 입찰 상태(completed/domestic_arrived/processing/shipped)를
+ * WMS 위치/상태와 매핑하고, wms_items 레코드를 자동 생성한다.
+ * 내부 바코드 CB-YYMMDD-AUC-NNNN 자동 발번.
+ * backfill: shipping_status → WMS, WMS → shipping_status 양방향.
+ */
 const WORKFLOW_BID_STATUSES = new Set([
   "completed",
   "domestic_arrived",

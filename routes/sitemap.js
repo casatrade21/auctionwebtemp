@@ -1,7 +1,10 @@
+/**
+ * routes/sitemap.js — 동적 사이트맵 생성
+ *
+ * Express 미들웨어 스택에서 GET 라우트를 추출하여
+ * XML 사이트맵을 생성한다.
+ */
 const express = require("express");
-const router = express.Router();
-
-// Express 앱에서 실제 라우트 추출
 function extractRoutes(app) {
   const routes = [];
 
@@ -117,7 +120,7 @@ router.get("/sitemap.xml", (req, res) => {
     // 3. 도메인별 필터링
     if (host === "cassystem.com" || host === "www.cassystem.com") {
       pageRoutes = pageRoutes.filter(
-        (route) => route.startsWith("/appr") || route === "/"
+        (route) => route.startsWith("/appr") || route === "/",
       );
     } else if (host === "casastrade.com" || host === "www.casastrade.com") {
       pageRoutes = pageRoutes.filter((route) => !route.startsWith("/appr"));

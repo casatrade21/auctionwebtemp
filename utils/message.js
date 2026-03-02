@@ -1,4 +1,9 @@
-// utils/message.js
+/**
+ * message.js — 카카오톡 알림톡 발송 서비스 (Aligo API)
+ *
+ * 템플릿: 낙찰 알림, 최종 입찰 요청, 더 높은 입찰 알림
+ * 크론: 평일 16:00 낙찰 알림 / 매일 18:00 최종 입찰 리마인더
+ */
 const axios = require("axios");
 const { pool } = require("./DB");
 const cron = require("node-cron");

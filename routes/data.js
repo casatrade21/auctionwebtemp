@@ -1,4 +1,10 @@
-// routes/data.js
+/**
+ * routes/data.js — 상품 데이터 및 검색 API
+ *
+ * Elasticsearch 퍼지 검색 + DB LIKE 폴백,
+ * 아이템 처리(processItem), 환율 조회.
+ * 마운트: /api/data
+ */
 const dotenv = require("dotenv");
 dotenv.config();
 
