@@ -4,7 +4,7 @@
  * auc_num: 3 | 동시성: 3 | HTML(cheerio) + FormData | 단일 클라이언트
  */
 const cheerio = require("cheerio");
-const { AxiosCrawler } = require("./axiosCrawler");
+const { AxiosCrawler } = require("./baseCrawler");
 const { processImagesInChunks } = require("../utils/imageProcessor");
 const FormData = require("form-data");
 
