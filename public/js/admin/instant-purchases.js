@@ -29,6 +29,22 @@ const INSTANT_SHIPPING_STATUSES = new Set([
   "completed",
 ]);
 
+const INSTANT_WORKFLOW_STATUSES = [
+  "completed",
+  "domestic_arrived",
+  "processing",
+  "shipped",
+];
+
+function getInstantWorkflowStatusOptionsHtml(currentStatus) {
+  return INSTANT_WORKFLOW_STATUSES.map(
+    (status) =>
+      `<option value="${status}"${
+        status === currentStatus ? " selected" : ""
+      }>${getInstantStatusLabel(status)}</option>`,
+  ).join("");
+}
+
 const INSTANT_ZONE_SUMMARY_VISIBLE_STATUSES = new Set([
   "domestic_arrived",
   "processing",
@@ -317,53 +333,114 @@ function renderInstantPurchasesTable(items) {
       const status = item.status || "pending";
       const shippingStatus = item.shipping_status || "pending";
 
-      let statusDisplay = getInstantStatusLabel(status);
-      let statusClass = `status-${status}`;
-      if (status === "completed" && shippingStatus === "processing") {
-        statusDisplay = getInstantProcessingStatusLabel(item);
-        statusClass = "status-processing";
+      let statusDisplay = "";
+      let statusClass = "";
+      if (status === "completed") {
+        const ss = shippingStatus || "pending";
+        if (ss === "domestic_arrived") {
+          statusDisplay = "국내도착";
+          statusClass = "badge-warning";
+        } else if (ss === "processing") {
+          statusDisplay = getInstantProcessingStatusLabel(item);
+          statusClass = "badge-dark";
+        } else if (ss === "shipped") {
+          statusDisplay = "출고됨";
+          statusClass = "badge-primary";
+        } else {
+          statusDisplay = "완료";
+          statusClass = "badge-success";
+        }
+      } else if (status === "cancelled") {
+        statusDisplay = "취소";
+        statusClass = "badge-secondary";
+      } else {
+        statusDisplay = "대기";
+        statusClass = "badge-info";
       }
 
       let shippingDisplay = getInstantShippingLabel(shippingStatus);
 
-      // 바코드 표시
-      const barcode = item.wms_internal_barcode || "";
-      const barcodeHtml = barcode
-        ? `<div class="barcode-tag">${escapeHtml(barcode)}</div>`
-        : "";
-
       // 감정서
-      const hasAppr = item.appr_id ? "✅" : "-";
+      const hasAppr = item.appr_id
+        ? '<span class="badge badge-success">발급됨</span>'
+        : '<span class="badge badge-secondary">미발급</span>';
 
       // 수선
       let repairHtml = "-";
-      if (item.repair_requested_at) {
-        repairHtml = `<button class="btn btn-xs btn-outline" onclick="openRepairModal(${item.id})">수선 접수됨</button>`;
-      } else if (status === "completed") {
-        repairHtml = `<button class="btn btn-xs btn-ghost" onclick="openRepairModal(${item.id})">수선</button>`;
+      if (
+        status === "completed" ||
+        shippingStatus === "domestic_arrived" ||
+        shippingStatus === "processing" ||
+        shippingStatus === "shipped"
+      ) {
+        if (item.repair_requested_at) {
+          repairHtml = `<button class="btn btn-sm btn-success"
+            data-bid-id="${item.id}"
+            data-bid-type="instant"
+            data-repair-details="${escapeHtml(item.repair_details || "")}"
+            data-repair-fee="${item.repair_fee || 0}"
+            data-repair-requested-at="${item.repair_requested_at || ""}"
+            onclick="openRepairModalFromButton(this)">접수됨</button>`;
+        } else {
+          repairHtml = `<button class="btn btn-sm btn-secondary" onclick="openRepairModal(${item.id}, 'instant')">수선 접수</button>`;
+        }
       }
 
       // 작업 버튼
-      let actionsHtml = "";
+      let actionsHtml = '<div class="action-buttons-row">';
       if (status === "completed") {
-        actionsHtml += `<button class="btn btn-xs" onclick="openShippingModal(${item.id}, '${shippingStatus}')">배송</button> `;
+        actionsHtml += `
+          <select class="form-control form-control-sm status-target-select" id="instantStatusTarget-${item.id}" data-current-status="${shippingStatus || "completed"}">
+            ${getInstantWorkflowStatusOptionsHtml(shippingStatus || "completed")}
+          </select>
+          <button class="btn btn-info btn-sm" onclick="moveInstantPurchaseStatus(${item.id})">상태 변경</button>`;
       }
       if (status !== "cancelled") {
-        actionsHtml += `<button class="btn btn-xs btn-danger" onclick="openCancelModal(${item.id})">취소</button> `;
+        actionsHtml += `<button class="btn btn-sm btn-danger" onclick="openCancelModal(${item.id})">취소</button> `;
       }
-      actionsHtml += `<button class="btn btn-xs btn-ghost" onclick="openDetailModal(${item.id})">상세</button>`;
+      actionsHtml += `<button class="btn btn-sm btn-ghost" onclick="openDetailModalById(${item.id})">상세</button>`;
+      actionsHtml += "</div>";
+
+      // 상품 정보 - 일관된 item-info 레이아웃
+      const scheduledDate = item.completed_at
+        ? new Date(item.completed_at).toLocaleString("ko-KR")
+        : item.created_at
+          ? new Date(item.created_at).toLocaleString("ko-KR")
+          : "-";
+
+      const itemUrl = `https://bid.brand-auc.com/items/detail?uketsukeBng=${item.item_id}`;
 
       return `<tr data-purchase-id="${item.id}">
-        <td><input type="checkbox" class="bid-checkbox" value="${item.id}" /></td>
+        <td><input type="checkbox" class="bid-checkbox" value="${item.id}" data-status="${status}" data-shipping-status="${shippingStatus}" /></td>
         <td>${item.id}</td>
         <td>
-          <div class="product-info-cell" style="cursor:pointer" onclick="openDetailModal(${item.id})">
-            <img src="${escapeHtml(image)}" alt="" class="product-thumb" onerror="this.src='/images/no-image.png'" />
-            <div class="product-text">
-              <div class="product-brand">${brand}</div>
-              <div class="product-title" title="${escapeHtml(title)}">${truncTitle}</div>
-              <div class="product-id">${escapeHtml(item.item_id || "-")}</div>
-              ${barcodeHtml}
+          <div class="item-info">
+            <img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" class="item-thumbnail" />
+            <div class="item-details">
+              <div>
+                <a href="${escapeHtml(itemUrl)}" target="_blank" rel="noopener noreferrer" class="item-id-link"
+                  onclick="return openInstantProductDetail(event, this);"
+                  data-item-id="${escapeHtml(item.item_id || "")}"
+                  data-auc-num="${escapeHtml(String(item.auc_num || 2))}"
+                  data-image="${escapeHtml(image)}"
+                  data-title="${escapeHtml(title || "-")}"
+                  data-brand="${escapeHtml(item.brand || "-")}"
+                  data-category="${escapeHtml(item.category || "-")}"
+                  data-rank="${escapeHtml(item.rank || "-")}"
+                  data-accessory-code="-"
+                  data-scheduled="${escapeHtml(scheduledDate || "-")}"
+                  data-origin-url="${escapeHtml(itemUrl || "#")}"
+                >${escapeHtml(item.item_id || "-")}</a>
+              </div>
+              <div class="item-meta">
+                <span>내부바코드: ${item.wms_internal_barcode || "-"}</span>
+                <span>제목: ${truncTitle}</span>
+                <span>경매번호: ${item.auc_num || "-"}</span>
+                <span>카테고리: ${item.category || "-"}</span>
+                <span>브랜드: ${brand}</span>
+                <span>등급: ${item.rank || "-"}</span>
+                <span>상품가: ${item.starting_price ? cleanNumberFormat(item.starting_price) + "¥" : "-"}</span>
+              </div>
             </div>
           </div>
         </td>
@@ -378,7 +455,7 @@ function renderInstantPurchasesTable(items) {
         <td>${createdAt}</td>
         <td>${updatedAt}</td>
         <td><span class="badge ${statusClass}">${statusDisplay}</span></td>
-        <td><span class="badge status-${shippingStatus}">${shippingDisplay}</span></td>
+        <td><span class="badge badge-${shippingStatus === "completed" ? "success" : shippingStatus === "shipped" ? "primary" : shippingStatus === "processing" ? "dark" : shippingStatus === "domestic_arrived" ? "warning" : "info"}">${shippingDisplay}</span></td>
         <td>${hasAppr}</td>
         <td>${repairHtml}</td>
         <td>${actionsHtml}</td>
@@ -518,9 +595,60 @@ async function submitShipping() {
   }
 }
 
-function openRepairModal(id) {
-  const item = currentPurchasesData.find((p) => p.id === id);
-  document.getElementById("repairPurchaseId").value = id;
+// 인라인 워크플로우 상태 변경
+async function moveInstantPurchaseStatus(purchaseId) {
+  const select = document.getElementById(`instantStatusTarget-${purchaseId}`);
+  const targetStatus = select?.value;
+  const currentRowStatus = select?.dataset.currentStatus || "";
+
+  if (!targetStatus) {
+    alert("변경할 상태를 선택해주세요.");
+    return;
+  }
+
+  if (targetStatus === currentRowStatus) {
+    alert("현재 상태와 동일합니다.");
+    return;
+  }
+
+  if (
+    !confirm(
+      `이 구매를 ${getInstantStatusLabel(targetStatus)} 상태로 변경하시겠습니까?`,
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await fetchAPI(`/instant-purchases/shipping-status`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ids: [parseInt(purchaseId)],
+        shippingStatus: targetStatus,
+      }),
+    });
+    alert(`상태가 ${getInstantStatusLabel(targetStatus)}으로 변경되었습니다.`);
+    await loadInstantPurchases();
+  } catch (error) {
+    alert("상태 변경 중 오류가 발생했습니다: " + error.message);
+  }
+}
+
+// 수선 모달 - 버튼에서 열기 (live/direct와 동일 패턴)
+function openRepairModalFromButton(button) {
+  const bidId = button.dataset.bidId;
+  const bidType = button.dataset.bidType || "instant";
+  const repairData = {
+    repair_details: button.dataset.repairDetails || "",
+    repair_fee: button.dataset.repairFee || 0,
+    repair_requested_at: button.dataset.repairRequestedAt || null,
+  };
+  openRepairModal(bidId, bidType, repairData);
+}
+
+// 수선 모달 열기 (신규 접수 또는 수정)
+function openRepairModal(bidId, bidType, repairData = null) {
+  document.getElementById("repairPurchaseId").value = bidId;
   const detailsEl = document.getElementById("repairDetails");
   const feeEl = document.getElementById("repairFee");
   const requestedGroup = document.getElementById("repairRequestedAtGroup");
@@ -528,43 +656,63 @@ function openRepairModal(id) {
   const cancelBtn = document.getElementById("cancelRepair");
   const submitBtn = document.getElementById("submitRepair");
 
-  if (item?.repair_requested_at) {
+  if (repairData && repairData.repair_requested_at) {
+    // 수정 모드
+    document.querySelector("#repairModal .modal-title").textContent =
+      "수선 정보 수정";
     requestedGroup.style.display = "block";
-    requestedAt.textContent = new Date(item.repair_requested_at).toLocaleString(
-      "ko-KR",
-    );
-    detailsEl.value = item.repair_details || "";
-    feeEl.value = item.repair_fee || "";
+    requestedAt.textContent = new Date(
+      repairData.repair_requested_at,
+    ).toLocaleString("ko-KR");
+    detailsEl.value = repairData.repair_details || "";
+    feeEl.value = repairData.repair_fee || "";
     cancelBtn.style.display = "inline-block";
     submitBtn.textContent = "수정하기";
   } else {
+    // 신규 접수 모드
+    document.querySelector("#repairModal .modal-title").textContent =
+      "수선 접수";
     requestedGroup.style.display = "none";
     detailsEl.value = "";
     feeEl.value = "";
     cancelBtn.style.display = "none";
     submitBtn.textContent = "접수하기";
   }
+
+  detailsEl.disabled = false;
+  feeEl.disabled = false;
+  submitBtn.style.display = "inline-block";
+
   document.getElementById("repairModal").classList.add("active");
 }
 
 async function submitRepair() {
   const id = document.getElementById("repairPurchaseId").value;
-  const details = document.getElementById("repairDetails").value;
+  const details = document.getElementById("repairDetails").value.trim();
   const fee = document.getElementById("repairFee").value;
+  const isEdit =
+    document.getElementById("submitRepair").textContent === "수정하기";
+
+  if (!details) {
+    alert("수선 내용을 입력해주세요.");
+    return;
+  }
 
   try {
     await fetchAPI(`/bid-results/instant/${id}/request-repair`, {
       method: "POST",
       body: JSON.stringify({
-        repairDetails: details,
-        repairFee: Number(fee) || 0,
+        repair_details: details,
+        repair_fee: fee ? parseInt(fee) : null,
       }),
     });
-    alert("수선이 접수되었습니다.");
+    alert(
+      isEdit ? "수선 정보가 수정되었습니다." : "수선 접수가 완료되었습니다.",
+    );
     document.getElementById("repairModal").classList.remove("active");
     await loadInstantPurchases();
   } catch (e) {
-    alert("수선 접수 실패: " + e.message);
+    alert((isEdit ? "수선 정보 수정" : "수선 접수") + " 실패: " + e.message);
   }
 }
 
@@ -575,7 +723,7 @@ async function cancelRepair() {
     await fetchAPI(`/bid-results/instant/${id}/repair`, {
       method: "DELETE",
     });
-    alert("수선이 취소되었습니다.");
+    alert("수선 접수가 취소되었습니다.");
     document.getElementById("repairModal").classList.remove("active");
     await loadInstantPurchases();
   } catch (e) {
@@ -584,66 +732,153 @@ async function cancelRepair() {
 }
 
 // --- Detail Modal ---
-async function openDetailModal(id) {
+
+function setInstantDetailText(id, value) {
+  const node = document.getElementById(id);
+  if (!node) return;
+  node.textContent = value || "-";
+}
+
+function setInstantDetailOrigin(url) {
+  const link = document.getElementById("instantDetailOriginLink");
+  if (!link) return;
+  const safeUrl = url && url !== "#" ? url : "";
+  link.href = safeUrl || "#";
+  link.style.pointerEvents = safeUrl ? "auto" : "none";
+  link.style.opacity = safeUrl ? "1" : "0.5";
+}
+
+function applyInstantDetailData(data = {}) {
+  setInstantDetailText("instantDetailItemId", data.itemId || "-");
+  setInstantDetailText("instantDetailTitle", data.title || "-");
+  setInstantDetailText("instantDetailBrand", data.brand || "-");
+  setInstantDetailText("instantDetailCategory", data.category || "-");
+  setInstantDetailText("instantDetailRank", data.rank || "-");
+  setInstantDetailText("instantDetailScheduled", data.scheduled || "-");
+  setInstantDetailText("instantDetailAccessoryCode", data.accessoryCode || "-");
+  setInstantDetailText("instantDetailDescription", data.description || "-");
+  setInstantDetailOrigin(data.originUrl || "#");
+  const mainImg = document.getElementById("instantDetailMainImage");
+  if (mainImg) mainImg.src = data.image || "/images/no-image.png";
+}
+
+function setInstantDetailImages(images) {
+  const normalized = Array.isArray(images)
+    ? images.filter((x) => String(x || "").trim())
+    : [];
+  instantDetailImages = normalized.length
+    ? normalized
+    : ["/images/no-image.png"];
+  instantDetailImageIndex = 0;
+  const mainImg = document.getElementById("instantDetailMainImage");
+  if (mainImg) mainImg.src = instantDetailImages[0];
+  renderInstantDetailThumbs();
+}
+
+async function openInstantProductDetail(event, anchorEl) {
+  if (event) event.preventDefault();
+  const anchor = anchorEl;
+  if (!anchor) return false;
+
+  const itemId = String(anchor.dataset.itemId || "").trim();
+  const aucNum = String(anchor.dataset.aucNum || "").trim();
+  const modal = window.setupModal("instantProductDetailModal");
+  if (!modal || !itemId) return false;
+
+  applyInstantDetailData({
+    itemId,
+    title: anchor.dataset.title || "-",
+    brand: anchor.dataset.brand || "-",
+    category: anchor.dataset.category || "-",
+    rank: anchor.dataset.rank || "-",
+    scheduled: anchor.dataset.scheduled || "-",
+    description: "상세 정보를 불러오는 중입니다...",
+    image: anchor.dataset.image || "/images/no-image.png",
+    originUrl: anchor.dataset.originUrl || "#",
+    accessoryCode: anchor.dataset.accessoryCode || "-",
+  });
+  setInstantDetailImages([anchor.dataset.image || "/images/no-image.png"]);
+  modal.show();
+
+  try {
+    const detail = await window.API.fetchAPI(
+      `/detail/item-details/${encodeURIComponent(itemId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ aucNum, translateDescription: "ko" }),
+      },
+    );
+
+    let detailImage =
+      detail?.image || anchor.dataset.image || "/images/no-image.png";
+    let detailImages = [detailImage];
+    if (detail?.additional_images) {
+      try {
+        const extra = JSON.parse(detail.additional_images);
+        if (Array.isArray(extra) && extra.length > 0 && extra[0]) {
+          detailImage = extra[0];
+          detailImages = [detailImage, ...extra.slice(1)];
+        }
+      } catch (e) {
+        /* ignore json parse error */
+      }
+    }
+    setInstantDetailImages(detailImages);
+
+    applyInstantDetailData({
+      itemId,
+      title: detail?.title || anchor.dataset.title || "-",
+      brand: detail?.brand || anchor.dataset.brand || "-",
+      category: detail?.category || anchor.dataset.category || "-",
+      rank: detail?.rank || anchor.dataset.rank || "-",
+      accessoryCode:
+        detail?.accessory_code || anchor.dataset.accessoryCode || "-",
+      scheduled: anchor.dataset.scheduled || "-",
+      description:
+        detail?.description_ko ||
+        detail?.description ||
+        "설명 정보가 없습니다.",
+      image: detailImage,
+      originUrl: anchor.dataset.originUrl || "#",
+    });
+  } catch (error) {
+    console.error("상품 상세 조회 실패:", error);
+    setInstantDetailText(
+      "instantDetailDescription",
+      "상세 정보를 불러오지 못했습니다.",
+    );
+  }
+  return false;
+}
+
+// 상세 버튼에서 ID로 열기 (액션 버튼용)
+function openDetailModalById(id) {
   const item = currentPurchasesData.find((p) => p.id === id);
   if (!item) return;
 
-  const modal = document.getElementById("instantProductDetailModal");
-  const itemId = item.item_id;
-
-  document.getElementById("instantDetailItemId").textContent = itemId || "-";
-  document.getElementById("instantDetailTitle").textContent =
-    item.title || item.original_title || "-";
-  document.getElementById("instantDetailBrand").textContent = item.brand || "-";
-  document.getElementById("instantDetailCategory").textContent =
-    item.category || "-";
-  document.getElementById("instantDetailRank").textContent = item.rank || "-";
-  document.getElementById("instantDetailScheduled").textContent =
-    item.scheduled_date
-      ? new Date(item.scheduled_date).toLocaleString("ko-KR")
+  const scheduled = item.completed_at
+    ? new Date(item.completed_at).toLocaleString("ko-KR")
+    : item.created_at
+      ? new Date(item.created_at).toLocaleString("ko-KR")
       : "-";
-  document.getElementById("instantDetailAccessoryCode").textContent =
-    item.additional_info || "-";
-  document.getElementById("instantDetailDescription").textContent =
-    "로딩 중...";
+  const itemUrl = `https://bid.brand-auc.com/items/detail?uketsukeBng=${item.item_id}`;
 
-  const mainImg = document.getElementById("instantDetailMainImage");
-  mainImg.src = item.image || "/images/no-image.png";
-
-  instantDetailImages = [item.image || "/images/no-image.png"];
-  instantDetailImageIndex = 0;
-
-  modal.classList.add("active");
-
-  // Fetch full details
-  try {
-    const details = await window.API.fetchAPI(
-      `/detail/item-details/${itemId}`,
-      { method: "POST", body: JSON.stringify({ aucNum: item.auc_num }) },
-    );
-    document.getElementById("instantDetailDescription").textContent =
-      details.description || "설명 없음";
-    document.getElementById("instantDetailAccessoryCode").textContent =
-      details.accessory_code || "-";
-
-    if (details.additional_images) {
-      try {
-        const imgs = JSON.parse(details.additional_images);
-        instantDetailImages = [item.image || "/images/no-image.png", ...imgs];
-        renderInstantDetailThumbs();
-      } catch (e) {
-        /* ignore */
-      }
-    }
-
-    if (details.origin_link) {
-      const link = document.getElementById("instantDetailOriginLink");
-      link.href = details.origin_link;
-    }
-  } catch (e) {
-    document.getElementById("instantDetailDescription").textContent =
-      "상세 정보 로드 실패";
-  }
+  // 가짜 앵커 객체를 만들어서 openInstantProductDetail에 전달
+  const fakeAnchor = {
+    dataset: {
+      itemId: item.item_id || "",
+      aucNum: String(item.auc_num || 2),
+      image: item.image || "/images/no-image.png",
+      title: item.title || item.original_title || "-",
+      brand: item.brand || "-",
+      category: item.category || "-",
+      rank: item.rank || "-",
+      accessoryCode: "-",
+      scheduled: scheduled,
+      originUrl: itemUrl,
+    },
+  };
+  openInstantProductDetail(null, fakeAnchor);
 }
 
 function renderInstantDetailThumbs() {
@@ -664,9 +899,59 @@ function setInstantDetailImage(idx) {
   renderInstantDetailThumbs();
 }
 
+function bindInstantDetailGalleryControls() {
+  document
+    .getElementById("instantDetailPrevBtn")
+    ?.addEventListener("click", () => {
+      if (instantDetailImageIndex > 0)
+        setInstantDetailImage(instantDetailImageIndex - 1);
+    });
+  document
+    .getElementById("instantDetailNextBtn")
+    ?.addEventListener("click", () => {
+      if (instantDetailImageIndex < instantDetailImages.length - 1)
+        setInstantDetailImage(instantDetailImageIndex + 1);
+    });
+}
+
+function bindInstantDetailImageZoomControls() {
+  const wrap = document.getElementById("instantDetailMainImageWrap");
+  const img = document.getElementById("instantDetailMainImage");
+  if (!wrap || !img) return;
+
+  const setZoomByPointer = (event) => {
+    const rect = wrap.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+    const y = Math.max(0, Math.min(event.clientY - rect.top, rect.height));
+    const xPct = (x / rect.width) * 100;
+    const yPct = (y / rect.height) * 100;
+    img.style.transformOrigin = `${xPct}% ${yPct}%`;
+  };
+
+  wrap.addEventListener("mouseenter", () => {
+    if (!window.matchMedia("(hover: hover)").matches) return;
+    img.classList.add("zoom-active");
+  });
+
+  wrap.addEventListener("mousemove", (event) => {
+    if (!img.classList.contains("zoom-active")) return;
+    setZoomByPointer(event);
+  });
+
+  wrap.addEventListener("mouseleave", () => {
+    img.classList.remove("zoom-active");
+    img.style.transformOrigin = "center center";
+  });
+}
+
 // --- Init ---
 document.addEventListener("DOMContentLoaded", function () {
   restoreURLState();
+
+  // 갤러리 & 줌 컨트롤 바인딩
+  bindInstantDetailGalleryControls();
+  bindInstantDetailImageZoomControls();
 
   // Apply restored state to UI
   const searchInput = document.getElementById("searchInput");
@@ -811,19 +1096,7 @@ document.addEventListener("DOMContentLoaded", function () {
     .getElementById("cancelRepair")
     ?.addEventListener("click", cancelRepair);
 
-  // Detail image nav
-  document
-    .getElementById("instantDetailPrevBtn")
-    ?.addEventListener("click", () => {
-      if (instantDetailImageIndex > 0)
-        setInstantDetailImage(instantDetailImageIndex - 1);
-    });
-  document
-    .getElementById("instantDetailNextBtn")
-    ?.addEventListener("click", () => {
-      if (instantDetailImageIndex < instantDetailImages.length - 1)
-        setInstantDetailImage(instantDetailImageIndex + 1);
-    });
+  // Detail image nav는 bindInstantDetailGalleryControls()에서 처리됨
 
   // Logout
   document.getElementById("logoutBtn")?.addEventListener("click", async () => {

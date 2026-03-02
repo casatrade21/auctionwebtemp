@@ -740,9 +740,11 @@ class UnifiedAuctionManager {
       item_id: itemId,
       item: { auc_num: aucNum, additional_info: purchase.additional_info },
     });
-    const scheduled = this.formatScheduledDate(
-      purchase.original_scheduled_date || purchase.scheduled_date,
-    );
+    const scheduled = purchase.completed_at
+      ? formatDate(purchase.completed_at)
+      : purchase.created_at
+        ? formatDate(purchase.created_at)
+        : "-";
 
     const itemInfoHtml = `
       <div class="item-info">
@@ -767,8 +769,12 @@ class UnifiedAuctionManager {
           </div>
           <div class="item-title">${purchase.original_title || purchase.title || "-"}</div>
           <div class="item-meta">
+            <span>내부바코드: ${purchase.wms_internal_barcode || "-"}</span>
+            <span>경매번호: ${aucNum}</span>
+            <span>카테고리: ${purchase.category || "-"}</span>
             <span>브랜드: ${purchase.brand || "-"}</span>
             <span>등급: ${purchase.rank || "-"}</span>
+            <span>상품가: ${purchase.starting_price ? formatCurrency(purchase.starting_price, "JPY") : "-"}</span>
           </div>
         </div>
       </div>
@@ -784,7 +790,7 @@ class UnifiedAuctionManager {
         <td>${this.renderAppraisalBadge(purchase)}</td>
         <td>
           <div class="date-info">
-            <div>${formatDate(purchase.created_at)}</div>
+            <div>${formatDate(purchase.completed_at || purchase.created_at)}</div>
           </div>
         </td>
         <td>${this.renderInstantActions(purchase)}</td>
@@ -810,32 +816,33 @@ class UnifiedAuctionManager {
     return html;
   }
 
-  // 바로 구매 상태 렌더링
+  // 바로 구매 상태 렌더링 (live/direct와 동일 패턴)
   renderInstantStatus(purchase) {
-    const statusMap = {
-      completed: { text: "완료", className: "badge-success" },
-      cancelled: { text: "취소", className: "badge-secondary" },
-    };
-    const status = statusMap[purchase.status] || {
-      text: purchase.status || "-",
-      className: "badge",
-    };
-    let badge = `<span class="badge ${status.className}">${status.text}</span>`;
-    if (purchase.shipping_status) {
-      const shippingMap = {
-        domestic_arrived: "국내도착",
-        in_progress: "작업중",
-        shipped: "출고됨",
-      };
-      badge += ` <span class="badge badge-info">${shippingMap[purchase.shipping_status] || purchase.shipping_status}</span>`;
+    const status = purchase.status || "pending";
+    const ss = purchase.shipping_status || "pending";
+
+    if (status === "completed") {
+      if (ss === "domestic_arrived") {
+        return '<span class="badge badge-warning">국내도착</span>';
+      } else if (ss === "processing") {
+        return '<span class="badge badge-dark">작업중</span>';
+      } else if (ss === "shipped") {
+        return '<span class="badge badge-primary">출고됨</span>';
+      } else {
+        return '<span class="badge badge-success">완료</span>';
+      }
+    } else if (status === "cancelled") {
+      return '<span class="badge badge-secondary">취소</span>';
+    } else {
+      return '<span class="badge badge-info">대기</span>';
     }
-    return badge;
   }
 
   // 바로 구매 작업 버튼 렌더링
   renderInstantActions(purchase) {
     let html = '<div class="quick-actions-cell">';
-    if (purchase.status === "completed" && !purchase.shipping_status) {
+    const ss = purchase.shipping_status || "pending";
+    if (purchase.status === "completed" && ss === "pending") {
       html += `<button class="btn btn-sm btn-secondary" onclick="unifiedManager.quickAction('cancel-instant', ${purchase.id})">취소</button>`;
     }
     html += `<button class="btn btn-sm btn-outline" onclick="unifiedManager.goToDetailPage('instant', ${purchase.id})">상세 관리</button>`;
