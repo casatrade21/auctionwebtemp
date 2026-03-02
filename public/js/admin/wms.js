@@ -116,9 +116,9 @@ function updateStationStatus() {
     box.innerHTML = `현재 존: <strong>미설정</strong> (직원모드에서는 먼저 존 코드를 스캔하세요)`;
     return;
   }
-  box.innerHTML = `현재 존: <strong>${escapeHtmlText(getLocationNameByCode(
-    currentStationZone,
-  ))}</strong> (${escapeHtmlText(currentStationZone)})`;
+  box.innerHTML = `현재 존: <strong>${escapeHtmlText(
+    getLocationNameByCode(currentStationZone),
+  )}</strong> (${escapeHtmlText(currentStationZone)})`;
 }
 
 function setStationZone(zoneCode) {
@@ -149,8 +149,21 @@ function parseZoneCode(raw) {
     if (normalized.includes(z)) return normalizeZoneCode(z);
   }
 
-  for (const short of ["DAZ", "RTC", "AUT", "IRP", "ERP", "RDN", "HLD", "OBD"]) {
-    if (normalized.includes(`Z:${short}`) || normalized === short || normalized.endsWith(short)) {
+  for (const short of [
+    "DAZ",
+    "RTC",
+    "AUT",
+    "IRP",
+    "ERP",
+    "RDN",
+    "HLD",
+    "OBD",
+  ]) {
+    if (
+      normalized.includes(`Z:${short}`) ||
+      normalized === short ||
+      normalized.endsWith(short)
+    ) {
       const mapped = zoneCodeFromShort(short);
       if (mapped) return normalizeZoneCode(mapped);
     }
@@ -261,7 +274,8 @@ function extractBarcodePrefix(barcode) {
 
 function getRecentDomesticItems() {
   return (boardItems || []).filter(
-    (item) => normalizeZoneCode(item.current_location_code) === "DOMESTIC_ARRIVAL_ZONE",
+    (item) =>
+      normalizeZoneCode(item.current_location_code) === "DOMESTIC_ARRIVAL_ZONE",
   );
 }
 
@@ -280,7 +294,9 @@ function renderDomesticPrefixChips(items) {
   if (!node) return;
   const countMap = new Map();
   items.forEach((item) => {
-    const prefix = extractBarcodePrefix(item.internal_barcode || item.external_barcode);
+    const prefix = extractBarcodePrefix(
+      item.internal_barcode || item.external_barcode,
+    );
     if (!prefix) return;
     countMap.set(prefix, (countMap.get(prefix) || 0) + 1);
   });
@@ -335,7 +351,8 @@ function renderRecentDomesticList(items) {
   const node = el("recentDomesticList");
   if (!node) return;
   if (!items.length) {
-    node.innerHTML = '<div class="recent-domestic-empty">해당 조건의 국내도착 물건이 없습니다.</div>';
+    node.innerHTML =
+      '<div class="recent-domestic-empty">해당 조건의 국내도착 물건이 없습니다.</div>';
     return;
   }
   const sorted = [...items].sort(
@@ -391,6 +408,7 @@ function getBidTypeLabel(bidType) {
   const normalized = String(bidType || "").toLowerCase();
   if (normalized === "live") return "현장경매";
   if (normalized === "direct") return "직접경매";
+  if (normalized === "instant") return "바로구매";
   return "-";
 }
 
@@ -398,6 +416,7 @@ function getBidTypeBadgeClass(bidType) {
   const normalized = String(bidType || "").toLowerCase();
   if (normalized === "live") return "is-live";
   if (normalized === "direct") return "is-direct";
+  if (normalized === "instant") return "is-instant";
   return "";
 }
 
@@ -445,7 +464,8 @@ function updateBoardFilterHint() {
   const hintNode = el("boardFilterHint");
   if (!hintNode) return;
   if (!selectedBoardZoneCode) {
-    hintNode.textContent = "숫자를 클릭하면 해당 존 물건만 아래 목록에 표시됩니다.";
+    hintNode.textContent =
+      "숫자를 클릭하면 해당 존 물건만 아래 목록에 표시됩니다.";
     return;
   }
   hintNode.textContent = `필터 적용됨: ${getLocationNameByCode(selectedBoardZoneCode)} (${selectedBoardZoneCode})`;
@@ -514,7 +534,11 @@ function renderAuctionRows(items) {
       (r, idx) => `
       <tr>
         <td><input type="checkbox" class="auction-row-check" data-idx="${idx}" /></td>
-        <td>${r.bid_type}</td>
+        <td>
+          <span class="bid-type-badge ${getBidTypeBadgeClass(r.bid_type)}">
+            ${escapeHtmlText(getBidTypeLabel(r.bid_type))}
+          </span>
+        </td>
         <td>${r.bid_id}</td>
         <td>${r.auc_num || "-"}</td>
         <td>${r.item_id || "-"}</td>
@@ -529,7 +553,9 @@ function renderAuctionRows(items) {
 }
 
 function getSelectedAuctionRows() {
-  const checks = Array.from(document.querySelectorAll(".auction-row-check:checked"));
+  const checks = Array.from(
+    document.querySelectorAll(".auction-row-check:checked"),
+  );
   return checks
     .map((c) => Number(c.dataset.idx))
     .filter((n) => Number.isInteger(n) && auctionRows[n])
@@ -577,15 +603,14 @@ function printLabels(labels) {
   }
 
   const html = labels
-    .map(
-      (l, idx) => {
-        const customerName = l.customer_name || l.company_name || "-";
-        const title = sanitizeLabelTitle(l.original_title);
-        const hasAppraisal =
-          Boolean(l.has_appraisal) ||
-          Number(l.request_type) === 1 ||
-          Number(l.request_type) === 3;
-        return `
+    .map((l, idx) => {
+      const customerName = l.customer_name || l.company_name || "-";
+      const title = sanitizeLabelTitle(l.original_title);
+      const hasAppraisal =
+        Boolean(l.has_appraisal) ||
+        Number(l.request_type) === 1 ||
+        Number(l.request_type) === 3;
+      return `
       <div class="label-page">
         <div class="label">
           <div class="code">${escapeHtmlText(l.internal_barcode)}</div>
@@ -599,8 +624,7 @@ function printLabels(labels) {
         </div>
       </div>
     `;
-      },
-    )
+    })
     .join("");
 
   const win = window.open("", "_blank", "width=1000,height=800");
@@ -917,51 +941,53 @@ async function scanItem() {
 
   scanInFlight = true;
   try {
-  if (mode === "two_step") {
-    const zoneCode = parseZoneCode(barcodeInput);
-    if (zoneCode) {
-      setStationZone(zoneCode);
-      el("scanBarcode").value = "";
-      el("scanResult").textContent = `현재 존 설정 완료: ${getLocationNameByCode(zoneCode)}`;
-      el("scanBarcode").focus();
-      return;
+    if (mode === "two_step") {
+      const zoneCode = parseZoneCode(barcodeInput);
+      if (zoneCode) {
+        setStationZone(zoneCode);
+        el("scanBarcode").value = "";
+        el("scanResult").textContent =
+          `현재 존 설정 완료: ${getLocationNameByCode(zoneCode)}`;
+        el("scanBarcode").focus();
+        return;
+      }
+      // 존코드 스캔이 깨져 들어온 경우(한글 IME/잘못된 입력) 물건 스캔으로 오인되지 않게 막는다.
+      if (barcodeInput.includes(":")) {
+        el("scanBarcode").value = "";
+        el("scanResult").textContent =
+          "존 코드 인식 실패: 영문(ABC) 입력 상태로 존 바코드를 다시 스캔하세요.";
+        alert("존 코드 인식 실패: 영문(ABC) 상태에서 다시 스캔하세요.");
+        el("scanBarcode").focus();
+        return;
+      }
+      if (!currentStationZone) {
+        alert("먼저 존 코드를 스캔해 현재 존을 설정하세요.");
+        return;
+      }
     }
-    // 존코드 스캔이 깨져 들어온 경우(한글 IME/잘못된 입력) 물건 스캔으로 오인되지 않게 막는다.
-    if (barcodeInput.includes(":")) {
-      el("scanBarcode").value = "";
-      el("scanResult").textContent =
-        "존 코드 인식 실패: 영문(ABC) 입력 상태로 존 바코드를 다시 스캔하세요.";
-      alert("존 코드 인식 실패: 영문(ABC) 상태에서 다시 스캔하세요.");
-      el("scanBarcode").focus();
-      return;
-    }
-    if (!currentStationZone) {
-      alert("먼저 존 코드를 스캔해 현재 존을 설정하세요.");
-      return;
-    }
-  }
 
-  const targetLocationCode =
-    mode === "two_step" ? currentStationZone : el("toLocationCode").value;
+    const targetLocationCode =
+      mode === "two_step" ? currentStationZone : el("toLocationCode").value;
 
-  const payload = {
-    barcode: barcodeInput,
-    toLocationCode: targetLocationCode,
-    staffName: el("staffName").value.trim() || null,
-    note: el("scanNote").value.trim() || null,
-  };
+    const payload = {
+      barcode: barcodeInput,
+      toLocationCode: targetLocationCode,
+      staffName: el("staffName").value.trim() || null,
+      note: el("scanNote").value.trim() || null,
+    };
 
-  const data = await api("/api/wms/scan", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+    const data = await api("/api/wms/scan", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
 
-  const zoneName = getLocationNameByCode(data.item.current_location_code);
-  const statusName = getStatusNameByCode(data.item.current_status);
-  el("scanResult").textContent = `처리 완료: ${data.item.internal_barcode || data.item.external_barcode} -> ${zoneName} (${statusName})`;
-  el("scanBarcode").value = "";
-  el("scanBarcode").focus();
-  await loadBoard();
+    const zoneName = getLocationNameByCode(data.item.current_location_code);
+    const statusName = getStatusNameByCode(data.item.current_status);
+    el("scanResult").textContent =
+      `처리 완료: ${data.item.internal_barcode || data.item.external_barcode} -> ${zoneName} (${statusName})`;
+    el("scanBarcode").value = "";
+    el("scanBarcode").focus();
+    await loadBoard();
   } finally {
     scanInFlight = false;
   }
@@ -988,7 +1014,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("btnClearStation")?.addEventListener("click", () => {
     currentStationZone = null;
     updateStationStatus();
-    el("scanResult").textContent = "현재 존을 초기화했습니다. 존 코드를 다시 스캔하세요.";
+    el("scanResult").textContent =
+      "현재 존을 초기화했습니다. 존 코드를 다시 스캔하세요.";
     el("scanBarcode").focus();
   });
 
@@ -1026,7 +1053,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!zoneCode) return;
     setStationZone(zoneCode);
     el("scanBarcode").value = "";
-    el("scanResult").textContent = `현재 존 설정 완료: ${getLocationNameByCode(zoneCode)}`;
+    el("scanResult").textContent =
+      `현재 존 설정 완료: ${getLocationNameByCode(zoneCode)}`;
   });
 
   el("btnSearchCompleted")?.addEventListener("click", async () => {

@@ -114,7 +114,7 @@ router.get("/", async (req, res) => {
               fuzziness: "AUTO",
               operator: "and",
               size: 5000,
-            }
+            },
           );
 
           if (itemIds.length > 0) {
@@ -132,7 +132,7 @@ router.get("/", async (req, res) => {
         } catch (esError) {
           console.error(
             "ES search failed, using DB LIKE fallback:",
-            esError.message
+            esError.message,
           );
           const searchTerms = search.trim().split(/\s+/);
           const searchConditions = searchTerms.map(() => "title LIKE ?");
@@ -173,7 +173,7 @@ router.get("/", async (req, res) => {
       const categoryList = categories.split(",");
       if (categoryList.length > 0) {
         conditions.push(
-          `category IN (${categoryList.map(() => "?").join(",")})`
+          `category IN (${categoryList.map(() => "?").join(",")})`,
         );
         queryParams.push(...categoryList);
       }
@@ -185,8 +185,10 @@ router.get("/", async (req, res) => {
       if (dateList.length > 0) {
         const dateConds = [];
         dateList.forEach((date) => {
-          dateConds.push(`DATE(scheduled_date) = ?`);
-          queryParams.push(date);
+          dateConds.push(
+            `(scheduled_date >= ? AND scheduled_date < ? + INTERVAL 1 DAY)`,
+          );
+          queryParams.push(date, date);
         });
         if (dateConds.length > 0) {
           conditions.push(`(${dateConds.join(" OR ")})`);
@@ -207,7 +209,10 @@ router.get("/", async (req, res) => {
       query += " WHERE " + conditions.join(" AND ");
     }
 
-    const countQuery = `SELECT COUNT(*) as total FROM (${query}) as subquery`;
+    const countQuery = query.replace(
+      /^SELECT \* FROM/,
+      "SELECT COUNT(*) as total FROM",
+    );
 
     // 정렬 (원본과 동일하지만 MariaDB 호환성 고려)
     let orderByClause = "";
@@ -225,8 +230,7 @@ router.get("/", async (req, res) => {
         break;
       case "starting_price":
       case "final_price":
-        // MariaDB 호환 숫자 변환
-        orderByClause = "final_price + 0";
+        orderByClause = "final_price";
         break;
       case "brand":
         // 브랜드
@@ -250,7 +254,7 @@ router.get("/", async (req, res) => {
     const [items] = await pool.query(query, queryParams);
     const [countResult] = await pool.query(
       countQuery,
-      queryParams.slice(0, -2)
+      queryParams.slice(0, -2),
     );
     const totalItems = countResult[0].total;
     const totalPages = Math.ceil(totalItems / limit);
@@ -262,8 +266,8 @@ router.get("/", async (req, res) => {
       const processItemsInBatches = async (items) => {
         const promises = items.map((item) =>
           limit(() =>
-            processItem(item.item_id, true, null, true, null, 2, item.auc_num)
-          )
+            processItem(item.item_id, true, null, true, null, 2, item.auc_num),
+          ),
         );
         const processedItems = await Promise.all(promises);
         return processedItems.filter((item) => item !== null);

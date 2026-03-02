@@ -422,46 +422,51 @@ class MekikiAucCrawler extends AxiosCrawler {
 
   // Description 생성
   async buildDescriptionTitle(item) {
-    const getValue = (val) => val || "-";
-    const comment = await translator.translate(item.comment || "-");
-    const model = await translator.translate(item.model1 || "-");
-    const model2 = await translator.translate(item.model2 || "-");
-    const line = await translator.translate(item.line || "-");
-    const material = await translator.translate(item.material || "-");
-    const color = await translator.translate(item.color || "-");
-    const serialNumber = await translator.translate(item.serial_number || "-");
-    const accessoryNote = await translator.translate(
-      item.accessory_note || "-",
-    );
-    const size = await translator.translate(item.size || "-");
-    const detail = await translator.translate(item.detail || "-");
+    const getValue = (val) => val || "";
+    const comment = await translator.translate(item.comment || "");
+    const model = await translator.translate(item.model1 || "");
+    const model2 = await translator.translate(item.model2 || "");
+    const line = await translator.translate(item.line || "");
+    const material = await translator.translate(item.material || "");
+    const color = await translator.translate(item.color || "");
+    const serialNumber = await translator.translate(item.serial_number || "");
+    const accessoryNote = await translator.translate(item.accessory_note || "");
+    const size = await translator.translate(item.size || "");
+    const detail = await translator.translate(item.detail || "");
 
-    const title = `${getValue(item.category?.name?.en)} ${getValue(
-      item.brandTrans,
-    )} ${model} ${model2} ${serialNumber} ${size}`
-      .replace(" -", "")
-      .replace("-", "")
-      .trim();
+    const titleParts = [
+      getValue(item.category?.name?.en),
+      getValue(item.brandTrans),
+      model,
+      model2,
+      line,
+      material,
+      color,
+      serialNumber,
+      size,
+    ];
+    const title = titleParts.filter(Boolean).join(" ").trim();
 
+    const descValue = (val) => val || "-";
     const parts = [
-      `Comment: ${comment}`,
-      `Category: ${getValue(item.category?.name?.en)}`,
-      `Subcategory: ${getValue(item.subcategory?.name?.en)}`,
-      `Brand: ${getValue(item.brandTrans)}`,
-      `Grade: ${getValue(item.grade)}`,
-      `Outer Grade: ${getValue(item.grade_outside)}`,
-      `Inner Grade: ${getValue(item.grade_inside)}`,
-      `Retail Price: ${getValue(item.retail_price)}`,
-      `Model: ${model}`,
-      `Model Number: ${getValue(item.model_number)}`,
-      `Line: ${line}`,
-      `Material: ${material}`,
-      `Color: ${color}`,
-      `Serial Number: ${serialNumber}`,
-      `Accessory Note: ${accessoryNote}`,
-      `Size: ${size}`,
-      `Quantity: ${getValue(item.quantity)}`,
-      `Detail: ${detail}`,
+      `Comment: ${descValue(comment)}`,
+      `Category: ${descValue(item.category?.name?.en)}`,
+      `Subcategory: ${descValue(item.subcategory?.name?.en)}`,
+      `Brand: ${descValue(item.brandTrans)}`,
+      `Grade: ${descValue(item.grade)}`,
+      `Outer Grade: ${descValue(item.grade_outside)}`,
+      `Inner Grade: ${descValue(item.grade_inside)}`,
+      `Retail Price: ${descValue(item.retail_price)}`,
+      `Model: ${descValue(model)}`,
+      `Model Number: ${descValue(item.model_number)}`,
+      `Line: ${descValue(line)}`,
+      `Material: ${descValue(material)}`,
+      `Color: ${descValue(color)}`,
+      `Serial Number: ${descValue(serialNumber)}`,
+      `Accessory Note: ${descValue(accessoryNote)}`,
+      `Size: ${descValue(size)}`,
+      `Quantity: ${descValue(item.quantity)}`,
+      `Detail: ${descValue(detail)}`,
     ];
 
     return { description: parts.join(", "), title: title };
@@ -1068,46 +1073,51 @@ class MekikiAucValueCrawler extends AxiosCrawler {
 
   // Description 생성
   async buildDescriptionTitle(item) {
-    const getValue = (val) => val || "-";
-    const comment = await translator.translate(item.comment || "-");
-    const model = await translator.translate(item.model1 || "-");
-    const model2 = await translator.translate(item.model2 || "-");
-    const line = await translator.translate(item.line || "-");
-    const material = await translator.translate(item.material || "-");
-    const color = await translator.translate(item.color || "-");
-    const serialNumber = await translator.translate(item.serial_number || "-");
-    const accessoryNote = await translator.translate(
-      item.accessory_note || "-",
-    );
-    const size = await translator.translate(item.size || "-");
-    const detail = await translator.translate(item.detail || "-");
+    const getValue = (val) => val || "";
+    const comment = await translator.translate(item.comment || "");
+    const model = await translator.translate(item.model1 || "");
+    const model2 = await translator.translate(item.model2 || "");
+    const line = await translator.translate(item.line || "");
+    const material = await translator.translate(item.material || "");
+    const color = await translator.translate(item.color || "");
+    const serialNumber = await translator.translate(item.serial_number || "");
+    const accessoryNote = await translator.translate(item.accessory_note || "");
+    const size = await translator.translate(item.size || "");
+    const detail = await translator.translate(item.detail || "");
 
-    const title = `${getValue(item.category?.name?.en)} ${getValue(
-      item.brandTrans,
-    )} ${model} ${model2} ${serialNumber} ${size}`
-      .replace(" -", "")
-      .replace("-", "")
-      .trim();
+    const titleParts = [
+      getValue(item.category?.name?.en),
+      getValue(item.brandTrans),
+      model,
+      model2,
+      line,
+      material,
+      color,
+      serialNumber,
+      size,
+    ];
+    const title = titleParts.filter(Boolean).join(" ").trim();
 
+    const descValue = (val) => val || "-";
     const parts = [
-      `Comment: ${comment}`,
-      `Category: ${getValue(item.category?.name?.en)}`,
-      `Subcategory: ${getValue(item.subcategory?.name?.en)}`,
-      `Brand: ${getValue(item.brandTrans)}`,
-      `Grade: ${getValue(item.grade)}`,
-      `Outer Grade: ${getValue(item.grade_outside)}`,
-      `Inner Grade: ${getValue(item.grade_inside)}`,
-      `Retail Price: ${getValue(item.retail_price)}`,
-      `Model: ${model}`,
-      `Model Number: ${getValue(item.model_number)}`,
-      `Line: ${line}`,
-      `Material: ${material}`,
-      `Color: ${color}`,
-      `Serial Number: ${serialNumber}`,
-      `Accessory Note: ${accessoryNote}`,
-      `Size: ${size}`,
-      `Quantity: ${getValue(item.quantity)}`,
-      `Detail: ${detail}`,
+      `Comment: ${descValue(comment)}`,
+      `Category: ${descValue(item.category?.name?.en)}`,
+      `Subcategory: ${descValue(item.subcategory?.name?.en)}`,
+      `Brand: ${descValue(item.brandTrans)}`,
+      `Grade: ${descValue(item.grade)}`,
+      `Outer Grade: ${descValue(item.grade_outside)}`,
+      `Inner Grade: ${descValue(item.grade_inside)}`,
+      `Retail Price: ${descValue(item.retail_price)}`,
+      `Model: ${descValue(model)}`,
+      `Model Number: ${descValue(item.model_number)}`,
+      `Line: ${descValue(line)}`,
+      `Material: ${descValue(material)}`,
+      `Color: ${descValue(color)}`,
+      `Serial Number: ${descValue(serialNumber)}`,
+      `Accessory Note: ${descValue(accessoryNote)}`,
+      `Size: ${descValue(size)}`,
+      `Quantity: ${descValue(item.quantity)}`,
+      `Detail: ${descValue(detail)}`,
     ];
 
     return { description: parts.join(", "), title: title };
