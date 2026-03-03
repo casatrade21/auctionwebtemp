@@ -211,7 +211,8 @@ router.get("/outbound-ready", isAdmin, async (req, res) => {
       LEFT JOIN users du ON d.user_id = du.id
       LEFT JOIN users lu ON l.user_id = lu.id
       LEFT JOIN users iu ON ip.user_id = iu.id
-      LEFT JOIN crawled_items ci ON w.source_item_id = ci.item_id
+      LEFT JOIN crawled_items ci
+        ON w.source_item_id COLLATE utf8mb4_unicode_ci = ci.item_id COLLATE utf8mb4_unicode_ci
       WHERE w.current_location_code = 'OUTBOUND_ZONE'
         AND w.current_status IN ('OUTBOUND_READY', 'SHIPPED')
         AND NOT EXISTS (
