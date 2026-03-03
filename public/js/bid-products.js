@@ -145,9 +145,6 @@ async function fetchProducts() {
 
   try {
     // 상태 파라미터 준비
-    // 참고: 백엔드의 SHIPPING_STATUSES에 'completed', 'pending'이 포함되어 있어
-    // bid status로 보낸 값이 shipping_status로 오해될 수 있음.
-    // 'all', 'completed', 'cancelled'은 status 파라미터를 보내지 않고 클라이언트 필터링으로 처리
     let statusParam;
     switch (window.state.status) {
       case "first":
@@ -171,11 +168,15 @@ async function fetchProducts() {
         statusParam = "cancelled";
         break;
       case "completed":
+        statusParam = core.STATUS_GROUPS.COMPLETED.join(",");
+        break;
       case "cancelled":
+        // 낙찰 실패: 모든 상태 (클라이언트에서 마감 여부로 필터링)
+        statusParam = core.STATUS_GROUPS.ALL.join(",");
+        break;
       case "all":
       default:
-        // 백엔드 SHIPPING_STATUSES 충돌 방지: status 필터 없이 전체 데이터 요청, 클라이언트에서 필터링
-        statusParam = null;
+        statusParam = core.STATUS_GROUPS.ALL.join(",");
         break;
     }
 
@@ -185,17 +186,13 @@ async function fetchProducts() {
 
     // 전체 데이터 요청 (페이지네이션은 클라이언트에서)
     const params = {
+      status: statusParam,
       fromDate: fromDate,
       page: 1,
       limit: 0, // 전체 데이터
       sortBy: window.state.sortBy,
       sortOrder: window.state.sortOrder,
     };
-
-    // status 필터가 있는 경우에만 추가 (백엔드 SHIPPING_STATUSES 충돌 방지)
-    if (statusParam) {
-      params.status = statusParam;
-    }
 
     if (window.state.keyword?.trim()) {
       params.search = window.state.keyword.trim();

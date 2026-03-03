@@ -2,52 +2,54 @@
 
 // 입찰 상품 관리 - 공통 로직
 window.BidProductsCore = (function () {
-  // 상태 정의 (입찰 항목은 bid status만 사용, shipping_status 제외)
+  // 상태 정의
   const STATUS_TYPES = {
     ACTIVE: "active",
     FIRST: "first",
     SECOND: "second",
     FINAL: "final",
-    PENDING: "pending", // instant purchase 전용
     COMPLETED: "completed",
+    SHIPPED: "shipped",
     CANCELLED: "cancelled",
   };
 
-  // 상태 그룹 - API 요청용 (입찰 항목은 bid status만 사용, shipping_status 제외)
+  // 상태 그룹 - API 요청용
   const STATUS_GROUPS = {
     ACTIVE: ["active", "first", "second", "final"],
-    COMPLETED: ["completed"],
+    COMPLETED: ["completed", "domestic_arrived", "processing", "shipped"], // shipping_status는 별도 필드로 관리됨
     CANCELLED: ["cancelled"],
     ALL: [
       "active",
       "first",
       "second",
       "final",
-      "pending", // instant purchase 전용
       "completed",
       "cancelled",
+      "domestic_arrived",
+      "processing",
+      "shipped",
     ],
   };
 
-  // 상태 표시 텍스트 (입찰 항목은 bid status만 표시)
+  // 상태 표시 텍스트
   const STATUS_DISPLAY = {
     [STATUS_TYPES.ACTIVE]: "입찰 가능",
     [STATUS_TYPES.FIRST]: "1차 입찰",
     [STATUS_TYPES.SECOND]: "2차 제안",
     [STATUS_TYPES.FINAL]: "최종 입찰",
-    [STATUS_TYPES.PENDING]: "처리중", // instant purchase 전용
     [STATUS_TYPES.COMPLETED]: "낙찰 완료",
+    [STATUS_TYPES.SHIPPED]: "출고됨",
     [STATUS_TYPES.CANCELLED]: "더 높은 입찰 존재",
   };
 
-  // 상태 CSS 클래스 (입찰 항목은 bid status만 사용)
+  // 상태 CSS 클래스
   const STATUS_CLASSES = {
     [STATUS_TYPES.ACTIVE]: "status-active",
     [STATUS_TYPES.FIRST]: "status-first",
     [STATUS_TYPES.SECOND]: "status-second",
     [STATUS_TYPES.FINAL]: "status-final",
-    [STATUS_TYPES.PENDING]: "status-pending", // instant purchase 전용
     [STATUS_TYPES.COMPLETED]: "status-completed",
+    [STATUS_TYPES.SHIPPED]: "status-shipped",
     [STATUS_TYPES.CANCELLED]: "status-cancelled",
     "status-expired": "status-expired",
   };
@@ -134,19 +136,16 @@ window.BidProductsCore = (function () {
           return true;
       }
     } else if (product.type === "instant") {
-      // instant (바로 구매) - pending, completed, cancelled 모두 표시
+      // instant (바로 구매)
       switch (statusFilter) {
         case "completed":
           return product.status === "completed";
-
-        case "cancelled":
-          return product.status === "cancelled";
 
         case "all":
           return true;
 
         default:
-          return true;
+          return product.status === "completed";
       }
     } else {
       // direct
@@ -369,13 +368,10 @@ window.BidProductsCore = (function () {
           pending: "처리중",
         };
         statusText = instantStatusMap[product.displayStatus] || "알 수 없음";
-        const instantStatusClassMap = {
-          completed: "status-completed",
-          cancelled: "status-cancelled",
-          pending: "status-pending",
-        };
         statusClass =
-          instantStatusClassMap[product.displayStatus] || "status-default";
+          product.displayStatus === "completed"
+            ? "status-completed"
+            : "status-cancelled";
       } else {
         const bidInfo = product.type === "live" ? product : null;
         statusClass = getStatusClass(
