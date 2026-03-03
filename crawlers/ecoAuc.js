@@ -1,9 +1,4 @@
-/**
- * ecoAuc.js — 에코옥션 (ecoauc.com) 크롤러
- *
- * auc_num: 1 | 동시성: 10 | HTML 파싱(cheerio) | 다중 클라이언트 세션
- * 로그인 → 경매 아이템 목록/상세 → 이미지 처리 → 입찰 제출
- */
+// crawlers/ecoAuc.js
 const cheerio = require("cheerio");
 const { AxiosCrawler, Crawler } = require("./baseCrawler");
 const { processImagesInChunks } = require("../utils/processImage");

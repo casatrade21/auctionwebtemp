@@ -1,11 +1,4 @@
-/**
- * dataUtils.js — 데이터 전처리 및 스케줄러
- *
- * 1. 필터 설정 동기화 — filter_settings → crawled_items.is_enabled
- * 2. 추천 설정 동기화 — recommend_settings → crawled_items.recommend
- * 3. 만료 상태 관리 — direct(1분)/live(1시간)/instant 만료 체크
- * 4. syncAllData() — 크롤링 완료 후 전체 동기화 트리거
- */
+// utils/dataUtils.js
 const { pool } = require("./DB");
 
 // ==========================================

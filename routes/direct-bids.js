@@ -1,9 +1,4 @@
-/**
- * routes/direct-bids.js — 직접 경매(고전적 경매) API
- *
- * 경매장별 입찰가 검증 → 플랫폼 제출 → 정산 생성 → 예치금 차감.
- * 마운트: /api/direct-bids
- */
+// routes/direct-bids.js - 직접 경매(고전적인 경매) 라우터
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

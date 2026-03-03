@@ -1,9 +1,4 @@
-/**
- * mekikiAuc.js — 메키키옥션 (mekiki.ai) 크롤러
- *
- * auc_num: 4 | 동시성: 1 | API 기반 (10초 딜레이) | 번역(translator)
- * REST API → 이벤트별 아이템 조회 → 이미지 처리
- */
+// crawlers/mekikiAuc.js
 const { AxiosCrawler } = require("./baseCrawler");
 const { processImagesInChunks } = require("../utils/processImage");
 const translator = require("../utils/translator");

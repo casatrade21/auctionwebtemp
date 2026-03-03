@@ -1,11 +1,16 @@
-/**
- * cron/reset-daily-limit.js — 기업 회원 일일 한도 초기화
- *
- * 매일 자정 cron으로 corporate 계정의 daily_used를 0으로 리셋.
- * server.js에서 cron.schedule('0 0 * * *', resetDailyLimits) 로 등록.
- */
+// cron/reset-daily-limit.js
 const { pool } = require("../utils/DB");
 
+/**
+ * 매일 자정에 법인 회원의 일일 한도를 초기화하는 함수 (개발 문서 기준)
+ *
+ * 사용법:
+ * 1. node-cron 패키지 설치: npm install node-cron
+ * 2. server.js에 다음 코드 추가:
+ *    const cron = require('node-cron');
+ *    const { resetDailyLimits } = require('./cron/reset-daily-limit');
+ *    cron.schedule('0 0 * * *', resetDailyLimits);
+ */
 async function resetDailyLimits() {
   console.log("[Cron] Starting daily limit reset job...");
 

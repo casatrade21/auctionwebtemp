@@ -1,8 +1,4 @@
-/**
- * routes/restoration.js — 복원 서비스 API
- *
- * 복원 요청 CRUD, 상태 변경, 관리자 조회.
- */
+// routes/restoration.js
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

@@ -1,10 +1,4 @@
-/**
- * baseCrawler.js — 크롤러 기본 클래스 (AxiosCrawler)
- *
- * 쿠키·프록시 지원 axios 클라이언트를 생성하고,
- * 로그인 → 상품 목록 → 상세 크롤링 플로우를 제공한다.
- * 모든 사이트별 크롤러가 이 클래스를 확장한다.
- */
+// crawlers/baseCrawler.js
 const dotenv = require("dotenv");
 const axios = require("axios");
 const tough = require("tough-cookie");
@@ -77,7 +71,7 @@ class AxiosCrawler {
     console.log(
       `${
         this.clients.length
-      }개 클라이언트 초기화 완료 (직접 1개 + 프록시 ${this.proxyManager.getAvailableProxyCount()}개)`,
+      }개 클라이언트 초기화 완료 (직접 1개 + 프록시 ${this.proxyManager.getAvailableProxyCount()}개)`
     );
   }
 
@@ -94,7 +88,7 @@ class AxiosCrawler {
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         },
         maxRedirects: 5,
-      }),
+      })
     );
   }
 
@@ -106,7 +100,7 @@ class AxiosCrawler {
 
       if (loggedInClients.length === 0) {
         console.warn(
-          "⚠️ 현재 로그인된 클라이언트가 없습니다. 백그라운드 로그인 진행 중...",
+          "⚠️ 현재 로그인된 클라이언트가 없습니다. 백그라운드 로그인 진행 중..."
         );
         // 백그라운드에서 로그인 시작 (await 하지 않음)
         if (!this.backgroundLoginInProgress) {
@@ -163,7 +157,7 @@ class AxiosCrawler {
     return this.retryOperation(async () => {
       try {
         const responses = await Promise.all(
-          this.config.loginCheckUrls.map((url) => clientInfo.client.get(url)),
+          this.config.loginCheckUrls.map((url) => clientInfo.client.get(url))
         );
 
         const result = responses.every((response) => response.status === 200);
@@ -185,7 +179,7 @@ class AxiosCrawler {
   // 특정 클라이언트로 로그인 (자식 클래스에서 구현)
   async performLoginWithClient(clientInfo) {
     throw new Error(
-      "performLoginWithClient method must be implemented by child class",
+      "performLoginWithClient method must be implemented by child class"
     );
   }
 
@@ -229,7 +223,7 @@ class AxiosCrawler {
         this.clientLoginPromises.has(clientIndex)
       ) {
         console.log(
-          `${clientInfo.name} - Login already in progress, waiting for completion`,
+          `${clientInfo.name} - Login already in progress, waiting for completion`
         );
         return await this.clientLoginPromises.get(clientIndex);
       }
@@ -316,8 +310,9 @@ class AxiosCrawler {
           }
           // 서버 세션 체크
           else {
-            const serverLoginValid =
-              await this.loginCheckWithClient(clientInfo);
+            const serverLoginValid = await this.loginCheckWithClient(
+              clientInfo
+            );
             if (serverLoginValid) {
               reason = "Session is valid";
               needsLogin = false;
@@ -342,11 +337,11 @@ class AxiosCrawler {
     // 로그인이 필요한 클라이언트 필터링
     const clientsNeedingLogin = loginChecks.filter((check) => check.needsLogin);
     const clientsAlreadyLoggedIn = loginChecks.filter(
-      (check) => !check.needsLogin,
+      (check) => !check.needsLogin
     );
 
     console.log(
-      `세션 확인 완료: 로그인 필요 ${clientsNeedingLogin.length}개, 유효 ${clientsAlreadyLoggedIn.length}개`,
+      `세션 확인 완료: 로그인 필요 ${clientsNeedingLogin.length}개, 유효 ${clientsAlreadyLoggedIn.length}개`
     );
 
     // 이미 로그인된 클라이언트 로그 출력
@@ -364,7 +359,7 @@ class AxiosCrawler {
       console.log(
         `[${i + 1}/${clientsNeedingLogin.length}] ${
           clientInfo.name
-        } - ${reason}, 로그인 시작...`,
+        } - ${reason}, 로그인 시작...`
       );
 
       // 이미 로그인이 진행 중인 경우 기다림
@@ -373,7 +368,7 @@ class AxiosCrawler {
         this.clientLoginPromises.has(clientIndex)
       ) {
         console.log(
-          `${clientInfo.name} - Login already in progress, waiting for completion`,
+          `${clientInfo.name} - Login already in progress, waiting for completion`
         );
         results.push(await this.clientLoginPromises.get(clientIndex));
         continue;
@@ -414,7 +409,7 @@ class AxiosCrawler {
         this.loginDelayBetweenClients > 0
       ) {
         console.log(
-          `다음 로그인까지 ${this.loginDelayBetweenClients}ms 대기...`,
+          `다음 로그인까지 ${this.loginDelayBetweenClients}ms 대기...`
         );
         await this.sleep(this.loginDelayBetweenClients);
       }
@@ -430,7 +425,7 @@ class AxiosCrawler {
   // 로그인된 클라이언트 반환
   getLoggedInClients() {
     return this.clients.filter(
-      (client) => client.isLoggedIn && this.isSessionValid(client.loginTime),
+      (client) => client.isLoggedIn && this.isSessionValid(client.loginTime)
     );
   }
 
@@ -510,7 +505,7 @@ class AxiosCrawler {
   async retryOperation(
     operation,
     maxRetries = this.maxRetries,
-    delay = this.retryDelay,
+    delay = this.retryDelay
   ) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -519,7 +514,7 @@ class AxiosCrawler {
         if (attempt === maxRetries) {
           console.error(
             `Operation failed after ${maxRetries} attempts:`,
-            error.message,
+            error.message
           );
           throw error;
         }

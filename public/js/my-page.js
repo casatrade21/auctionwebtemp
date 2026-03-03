@@ -138,7 +138,6 @@ class MyPageManager {
         "dashboard",
         "bid-items",
         "bid-results",
-        "shipping",
         "account",
       ].includes(hash)
         ? hash
@@ -1732,7 +1731,6 @@ window.addEventListener("hashchange", () => {
       "dashboard",
       "bid-items",
       "bid-results",
-      "shipping",
       "account",
     ].includes(hash)
       ? hash

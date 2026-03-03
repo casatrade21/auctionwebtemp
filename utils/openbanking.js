@@ -1,9 +1,4 @@
-/**
- * openbanking.js — 한국 오픈뱅킹 API 래퍼
- *
- * OAuth URL 생성, 토큰 발급, 계좌 조회,
- * 출금이체(예치금 충전)를 처리한다.
- */
+// utils/openbanking.js
 const axios = require("axios");
 const dotenv = require("dotenv");
 dotenv.config();

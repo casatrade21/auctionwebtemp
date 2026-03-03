@@ -1,17 +1,3 @@
-/**
- * adminAccess.js — 관리자 메뉴 접근 제어
- *
- * 메뉴 키 목록(ADMIN_MENU_KEYS) 기반으로
- * 슈퍼관리자 / 일반관리자 권한을 판단한다.
- *
- * 주요 export:
- *  - ADMIN_MENU_KEYS — 전체 관리자 메뉴 키 배열
- *  - isSuperAdminUser(user) — 슈퍼관리자 여부
- *  - isAdminUser(user) — 관리자 여부 (role === 'admin')
- *  - canAccessAdminMenu(user, menuKey) — 특정 메뉴 접근 가능 여부
- *  - parseAllowedMenus(raw) — allowed_menus 문자열을 배열로 파싱
- *  - ensureAdminPermissionTable() — 권한 테이블 자동 생성
- */
 const ADMIN_MENU_KEYS = [
   "dashboard",
   "live-bids",

@@ -1,10 +1,4 @@
-/**
- * routes/bid-results.js — 낙찰 결과 처리 API
- *
- * 낙찰 상태 변경, 정산 생성/업데이트,
- * 예치금 차감/환불, 수수료 계산, 감정서 자동 생성.
- * 마운트: /api/bid-results
- */
+// routes/bid-results.js
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

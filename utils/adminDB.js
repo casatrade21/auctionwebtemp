@@ -1,9 +1,4 @@
-/**
- * adminDB.js — 관리자 설정 및 공지사항 CRUD
- *
- * admin_settings 테이블: 크롤 스케줄, 로그인 필수 설정
- * notices 테이블: 이미지 포함 공지사항 관리
- */
+// utils/adminDB.js
 const { pool } = require("./DB");
 const fs = require("fs").promises;
 const path = require("path");
@@ -12,7 +7,7 @@ async function getAdminSettings() {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.query(
-      "SELECT * FROM admin_settings WHERE id = 1",
+      "SELECT * FROM admin_settings WHERE id = 1"
     );
     if (rows.length > 0) {
       return {
@@ -36,7 +31,7 @@ async function updateAdminSettings(settings) {
   const conn = await pool.getConnection();
   try {
     const [currentSettings] = await conn.query(
-      "SELECT * FROM admin_settings WHERE id = 1",
+      "SELECT * FROM admin_settings WHERE id = 1"
     );
 
     if (currentSettings.length === 0) {
@@ -64,14 +59,14 @@ async function updateAdminSettings(settings) {
 
     await conn.query(
       `UPDATE admin_settings SET ${updates.join(", ")} WHERE id = ?`,
-      values,
+      values
     );
 
     console.log("Admin settings updated successfully");
 
     // 업데이트된 설정 반환
     const [updatedRows] = await conn.query(
-      "SELECT * FROM admin_settings WHERE id = 1",
+      "SELECT * FROM admin_settings WHERE id = 1"
     );
 
     return {
@@ -117,7 +112,7 @@ async function getNoticeById(id) {
       FROM notices 
       WHERE id = ?
     `,
-      [id],
+      [id]
     );
     return rows[0];
   } catch (error) {
@@ -176,7 +171,7 @@ async function addNotice(title, imageUrl, targetUrl = null) {
 
     const [result] = await conn.query(
       "INSERT INTO notices (title, image_url, target_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-      [title, imageUrl, targetUrl, now, now],
+      [title, imageUrl, targetUrl, now, now]
     );
 
     return {
@@ -213,7 +208,7 @@ async function updateNotice(id, title, imageUrl, targetUrl = null) {
 
     const [result] = await conn.query(
       "UPDATE notices SET title = ?, image_url = ?, target_url = ?, updated_at = ? WHERE id = ?",
-      [title, imageUrl, targetUrl, now, id],
+      [title, imageUrl, targetUrl, now, id]
     );
 
     return result.affectedRows > 0

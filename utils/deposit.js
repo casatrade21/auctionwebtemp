@@ -1,13 +1,10 @@
-/**
- * deposit.js — 예치금 및 기업 한도 관리
- *
- * 개인 회원: deductDeposit / refundDeposit  (예치금 즐감)
- * 기업 회원: deductLimit / refundLimit      (일일 한도 즐감)
- * 모든 작업은 deposit_transactions에 기록된다.
- */
+// utils/deposit.js
 const { pool } = require("./DB");
 
-/** 예치금 차감 (status: confirmed) */
+/**
+ * 예치금 차감 (시스템에 의한 즉시 차감)
+ * Status: 'confirmed' (즉시 반영이므로)
+ */
 async function deductDeposit(
   connection,
   userId,
@@ -40,7 +37,10 @@ async function deductDeposit(
   return balanceAfter;
 }
 
-/** 예치금 환불 (status: confirmed) */
+/**
+ * 예치금 환불 (시스템/관리자에 의한 즉시 환불/지급)
+ * Status: 'confirmed'
+ */
 async function refundDeposit(
   connection,
   userId,
@@ -73,7 +73,10 @@ async function refundDeposit(
   return balanceAfter;
 }
 
-/** 기업 한도 차감 — daily_used 증가 */
+/**
+ * 한도 차감 (기업 회원)
+ * deposit_transactions에 기록하여 추적 가능하도록 함
+ */
 async function deductLimit(
   connection,
   userId,
@@ -108,7 +111,10 @@ async function deductLimit(
   return remainingLimit;
 }
 
-/** 기업 한도 복구 — daily_used 감소 */
+/**
+ * 한도 복구 (기업 회원)
+ * deposit_transactions에 기록하여 추적 가능하도록 함
+ */
 async function refundLimit(
   connection,
   userId,
@@ -143,8 +149,11 @@ async function refundLimit(
   return remainingLimit;
 }
 
-/** 확정된 입찰 차감액 조회 */
+/**
+ * 입찰 차감액 조회
+ */
 async function getBidDeductAmount(connection, bidId, bidType) {
+  // status='confirmed' 조건 추가하여 확정된 차감액만 조회
   const [transactions] = await connection.query(
     `SELECT amount FROM deposit_transactions 
      WHERE related_type = ? AND related_id = ? AND type = 'deduct' AND status = 'confirmed'

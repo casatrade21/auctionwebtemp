@@ -1,10 +1,4 @@
-/**
- * processImage.js — 이미지 다운로드 파이프라인
- *
- * 프록시 로테이션으로 감지 회피 후 sharp로 리사이즈/크롭 → webp 저장.
- * 3단계 우선순위 큐, 동시 200건 다운로드, 지수 백오프 재시도.
- * processImagesInChunks()가 메인 엔트리포인트.
- */
+// utils/processImage.js
 const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");

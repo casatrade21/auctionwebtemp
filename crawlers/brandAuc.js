@@ -1,9 +1,4 @@
-/**
- * brandAuc.js — 브랜드옥션 (brand-auc.com) 크롤러
- *
- * auc_num: 2 | 동시성: 10 | HTML 파싱(cheerio)
- * 로그인 → 미리보기/상세 API → 이미지 처리 → 입찰 제출
- */
+// crawlers/brandAuc.js
 const cheerio = require("cheerio");
 const { AxiosCrawler } = require("./baseCrawler");
 const { processImagesInChunks } = require("../utils/processImage");

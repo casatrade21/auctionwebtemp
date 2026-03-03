@@ -1,16 +1,4 @@
-/**
- * server.js — 메인 서버 진입점
- *
- * 경매 서비스(casastrade.com)와 감정 서비스(cassystem.com)를
- * 하나의 Express 서버에서 호스트 기반으로 분기하여 제공한다.
- *
- * 주요 구성:
- *  1. 미들웨어 — CORS, body-parser, 세션(MySQL 스토어), 관리자 활동 로그
- *  2. API 라우트 — /api/** (경매), /api/appr/** (감정)
- *  3. 페이지 라우트 — 메인 서비스·관리자·감정 시스템 HTML 서빙
- *  4. Elasticsearch — 검색 인덱스 초기화 (실패 시 DB LIKE 폴백)
- *  5. Socket.IO — 크롤러 실시간 상태 전송
- */
+// server.js
 require("dotenv").config();
 const express = require("express");
 const http = require("http");
@@ -32,15 +20,16 @@ const { adminActivityLogger } = require("./utils/adminActivityLogger");
 const { startExpiredSchedulers } = require("./utils/dataUtils");
 const esManager = require("./utils/elasticsearch");
 
-/* ── 라우트 모듈 임포트 ─────────────────────────────────── */
+// --- 사이트맵 라우트 ---
 const sitemapRoutes = require("./routes/sitemap");
 
-// 메인(경매) 서비스 라우트
+// --- 기존 서비스 라우트 ---
 const authRoutes = require("./routes/auth");
 const wishlistRoutes = require("./routes/wishlist");
 const dataRoutes = require("./routes/data");
 const { router: crawlerRoutes, initializeSocket } = require("./routes/crawler");
-const adminMainRoutes = require("./routes/admin");
+const bidRoutes = require("./routes/bid");
+const adminMainRoutes = require("./routes/admin"); // 기존 메인 서비스 관리자 API (admin.js)
 const valuesRoutes = require("./routes/values");
 const detailRoutes = require("./routes/detail");
 const liveBidsRoutes = require("./routes/live-bids");
@@ -55,16 +44,17 @@ const wmsRoutes = require("./routes/wms");
 const repairManagementRoutes = require("./routes/repair-management");
 const shippingRoutes = require("./routes/shipping");
 
-// 감정(appr) 서비스 라우트
+// --- 감정 시스템 관련 라우트 ---
 const appraisalsApprRoutes = require("./routes/appr/appraisals");
 const restorationsApprRoutes = require("./routes/appr/restorations");
 const paymentsApprRoutes = require("./routes/appr/payments");
 const usersApprRoutes = require("./routes/appr/users");
-const adminApiApprRoutes = require("./routes/appr/admin");
+const adminApiApprRoutes = require("./routes/appr/admin"); // 감정 시스템 관리자용 API
 
+// utils
 const metricsModule = require("./utils/metrics");
 
-/* ── 앱 초기화 ────────────────────────────────────────── */
+// init
 const app = express();
 const server = http.createServer(app);
 global.io = initializeSocket(server);
@@ -101,9 +91,11 @@ app.use("/favicon.ico", (req, res) => {
     );
   }
 
+  // favicon 파일이 존재하는지 확인
   if (fs.existsSync(faviconPath)) {
     res.sendFile(faviconPath);
   } else {
+    // 파일이 없으면 기본 favicon 사용
     res.sendFile(path.join(__dirname, "public", "images", "favicon.png"));
   }
 });
@@ -116,11 +108,11 @@ const sessionStore = new MySQLStore(
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     clearExpired: true,
-    checkExpirationInterval: 900000, // 15분
+    checkExpirationInterval: 900000, // 15분마다 만료된 세션 정리
     expiration: 86400000, // 24시간
     createDatabaseTable: false,
-    connectionLimit: 3,
-    reconnect: true,
+    connectionLimit: 3, // 세션 스토어 내부 연결 제한
+    reconnect: true, // 자동 재연결
     schema: {
       tableName: "sessions",
       columnNames: {
@@ -130,7 +122,7 @@ const sessionStore = new MySQLStore(
       },
     },
   },
-  sessionPool,
+  sessionPool, // 수정: 별도 세션 풀 사용
 );
 
 const sessionMiddleware = session({
@@ -139,7 +131,7 @@ const sessionMiddleware = session({
   store: sessionStore,
   resave: false,
   saveUninitialized: false,
-  rolling: true,
+  rolling: true, // 요청마다 세션 만료 시간 갱신
   cookie: {
     maxAge: 24 * 60 * 60 * 1000,
     secure: process.env.NODE_ENV === "production",
@@ -152,12 +144,13 @@ app.use(adminActivityLogger);
 
 app.use(metricsModule.metricsMiddleware);
 
-/* ── API 라우트 마운트 ─────────────────────────────────── */
+// --- API 라우트 마운트 ---
 app.use("/api/auth", authRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/data", dataRoutes);
 app.use("/api/crawler", crawlerRoutes);
-app.use("/api/admin", adminMainRoutes);
+app.use("/api/bid", bidRoutes);
+app.use("/api/admin", adminMainRoutes); // 기존 메인 서비스 관리자 API
 app.use("/api/values", valuesRoutes);
 app.use("/api/detail", detailRoutes);
 app.use("/api/live-bids", liveBidsRoutes);
@@ -180,7 +173,7 @@ app.use("/api/appr/payments", paymentsApprRoutes);
 app.use("/api/appr/users", usersApprRoutes);
 app.use("/api/appr/admin", adminApiApprRoutes);
 
-/* ── 정적 파일 및 페이지 서빙 ─────────────────────────── */
+// --- 정적 파일 및 HTML 페이지 서빙 ---
 const publicPath = path.join(__dirname, "public");
 const mainPagesPath = path.join(__dirname, "pages");
 const apprPagesPath = path.join(__dirname, "pages", "appr");
@@ -200,7 +193,7 @@ app.use(
   }),
 );
 
-// cassystem.com 호스트 접속 시 모든 요청을 /appr 경로로 리라이트
+// 메인 서비스 페이지
 app.use((req, res, next) => {
   const host = req.headers.host;
   if (host === "cassystem.com" || host === "www.cassystem.com") {
@@ -310,7 +303,7 @@ app.get("/bidGuidePage", (req, res) => {
   res.sendFile(path.join(mainPagesPath, "bid-guide.html"));
 });
 
-/* ── 관리자 페이지 라우트 (메뉴 키 → 경로 매핑) ─────── */
+// 메인 서비스 관리자 페이지 (제공해주신 원본 코드의 라우트들)
 const ADMIN_MENU_PATH_BY_KEY = {
   dashboard: "/admin",
   "live-bids": "/admin/live-bids",
@@ -389,7 +382,7 @@ app.get(
   sendAdminPage("admin-permissions.html", "__superadmin__"),
 );
 
-/* ── 감정(appr) 서비스 페이지 라우트 ──────────────────── */
+// 감정 시스템 페이지
 app.get("/appr", (req, res) => {
   res.sendFile(path.join(apprPagesPath, "index.html"));
 });
@@ -413,40 +406,46 @@ app.get("/appr/request", (req, res) => {
 app.get("/appr/request-repair/:certificateNumber", (req, res) => {
   res.sendFile(path.join(apprPagesPath, "request-repair.html"));
 });
+// 감정번호 조회 페이지
 app.get("/appr/result", (req, res) => {
   res.sendFile(path.join(apprPagesPath, "result.html"));
 });
-// 감정서 조회: 인증서 번호 또는 감정 ID로 유형별 상세 페이지 분기
+// 감정서 조회 통합 라우트 (공개 조회)
 app.get("/appr/result/:certificateNumber", async (req, res) => {
   try {
     const certificateNumber = req.params.certificateNumber;
 
+    // DB 연결
     const conn = await pool.getConnection();
 
     try {
+      // 먼저 감정서 번호로 조회
       const [appraisal] = await conn.query(
         `SELECT appraisal_type, certificate_number FROM appraisals WHERE certificate_number = ?`,
         [certificateNumber],
       );
 
       if (appraisal.length > 0) {
+        // 본인의 감정서인 경우: 감정 유형에 따라 상세 페이지로
         if (appraisal[0].appraisal_type === "quicklink") {
           return res.sendFile(path.join(apprPagesPath, "quick-result.html"));
         } else {
           return res.sendFile(path.join(apprPagesPath, "result-detail.html"));
         }
       } else {
-        // certificate_number 미매칭 → id 컬럼으로 재조회
+        // 감정서 번호로 찾을 수 없는 경우, 감정 ID로 시도
         const [appraisalById] = await conn.query(
           `SELECT appraisal_type, certificate_number FROM appraisals WHERE id = ?`,
           [certificateNumber],
         );
 
         if (appraisalById.length > 0) {
+          // 감정번호로 리다이렉션
           return res.redirect(
             `/appr/result/${appraisalById[0].certificate_number}`,
           );
         } else {
+          // 찾을 수 없는 경우 감정번호 조회 페이지로 리다이렉션
           return res.redirect(
             `/appr/result?error=not_found&id=${encodeURIComponent(
               certificateNumber,
@@ -459,6 +458,7 @@ app.get("/appr/result/:certificateNumber", async (req, res) => {
     }
   } catch (error) {
     console.error("감정서 조회 중 오류:", error);
+    // 오류 발생 시 감정번호 조회 페이지로 리다이렉션
     return res.redirect(`/appr/result?error=server_error`);
   }
 });
@@ -479,18 +479,20 @@ app.get("/appr/mypage", (req, res) => {
   }
 });
 app.get("/appr/admin", (req, res) => {
+  // 감정 시스템 관리자 HTML 페이지
   if (isAdminUser(req.session.user)) {
-    res.sendFile(path.join(apprPagesPath, "admin.html"));
+    res.sendFile(path.join(apprPagesPath, "admin.html")); // pages/appr/admin.html
   } else {
     res.redirect(req.session.user ? "/appr" : "/appr/signin");
   }
 });
-// 나이스페이 결제 완료 후 리다이렉트되는 페이지 (orderId 쿼리 파라미터 수신)
+// 나이스페이 결제 완료 후 돌아올 프론트엔드 페이지 (이 페이지에서 서버 API 호출)
 app.get("/appr/payment-processing.html", isAuthenticated, (req, res) => {
+  // 이 페이지는 서버로부터 리다이렉션될 때 orderId를 쿼리 파라미터로 받게 됩니다.
   res.sendFile(path.join(apprPagesPath, "payment-processing.html"));
 });
 
-/* ── 글로벌 에러 핸들러 ────────────────────────────────── */
+// 최하단 에러 핸들링 미들웨어
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err.stack || err);
   if (!res.headersSent) {
@@ -498,7 +500,7 @@ app.use((err, req, res, next) => {
   }
 });
 
-/* ── Elasticsearch 초기화 ──────────────────────────────── */
+// ===== Elasticsearch 초기화 함수 =====
 async function initializeElasticsearch() {
   try {
     console.log("🔍 Initializing Elasticsearch...");
@@ -508,7 +510,7 @@ async function initializeElasticsearch() {
       .trim()
       .toLowerCase();
 
-    // 개발 환경 + URL 미설정 → ES 스킵, DB LIKE 폴백
+    // 개발 환경에서는 URL 미설정 시 ES를 건너뛰고 DB LIKE fallback 사용
     if (!elasticsearchUrl && runtimeEnv === "development") {
       console.log(
         "ℹ️  ELASTICSEARCH_URL not set in development - skipping Elasticsearch and using DB LIKE fallback",
@@ -516,6 +518,7 @@ async function initializeElasticsearch() {
       return;
     }
 
+    // 1. ES 연결
     const connected = await esManager.connect(elasticsearchUrl || undefined);
 
     if (!connected) {
@@ -525,7 +528,7 @@ async function initializeElasticsearch() {
       return;
     }
 
-    // crawled_items 인덱스: 크롤링 상품 검색용
+    // 2. crawled_items 인덱스 설정
     esManager.registerIndex("crawled_items", {
       settings: {
         number_of_shards: 1,
@@ -563,7 +566,7 @@ async function initializeElasticsearch() {
       },
     });
 
-    // values_items 인덱스: 시세 조회 검색용
+    // 3. values_items 인덱스 설정
     esManager.registerIndex("values_items", {
       settings: {
         number_of_shards: 1,
@@ -601,7 +604,7 @@ async function initializeElasticsearch() {
       },
     });
 
-    // 인덱스가 없으면 생성
+    // 4. 인덱스 생성 (이미 있으면 스킵)
     await esManager.createIndex("crawled_items");
     await esManager.createIndex("values_items");
 
@@ -615,14 +618,15 @@ async function initializeElasticsearch() {
 metricsModule.setupMetricsJobs();
 const PORT = process.env.PORT || 3000;
 
-/* ── 서버 시작 ─────────────────────────────────────────── */
+// 서버는 즉시 시작하고, ES 초기화는 백그라운드에서 진행한다.
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`✓ Server is running on port ${PORT}`);
   console.log(`✓ Frontend URL for QR/Links: ${process.env.FRONTEND_URL}`);
 
+  // 만료 상태 자동 동기화 시작
   startExpiredSchedulers();
 
-  // ES 초기화는 비동기로 진행 — 실패해도 서버는 유지
+  // ES 초기화 (실패해도 서버는 유지)
   initializeElasticsearch().catch((error) => {
     console.error("✗ Elasticsearch background init failed:", error.message);
   });

@@ -1,10 +1,5 @@
-/**
- * processItem.js — 단일 상품 상세 처리
- *
- * DB에서 아이템 조회 → 사용자 입찰 데이터 부착 →
- * 설명이 없으면 경매 플랫폼에서 크롤링 → 이미지 처리 → DB 업데이트.
- */
-const { pool } = require("./DB");
+// utils/processItem.js
+const { pool } = require("./DB"); // Assuming DB.js exports the pool
 const { processImagesInChunks } = require("./processImage");
 const {
   ecoAucCrawler,

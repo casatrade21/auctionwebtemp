@@ -1,11 +1,4 @@
-/**
- * routes/shipping.js — 배송(출고) 관리 API
- *
- * 로젠택배 연동(송장 채번·등록·추적),
- * 송장 라벨 PDF 생성(A4 배치),
- * cron으로 배송 상태 자동 업데이트. 관리자 전용.
- * 마운트: /api/shipping
- */
+// routes/shipping.js - 배송(출고) 관리 API
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");
@@ -314,11 +307,13 @@ router.post("/register", isAdmin, async (req, res) => {
     );
     if (existing.length > 0) {
       await conn.rollback();
-      return res.status(409).json({
-        success: false,
-        message: "이미 등록된 송장이 있습니다.",
-        shipment_id: existing[0].id,
-      });
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: "이미 등록된 송장이 있습니다.",
+          shipment_id: existing[0].id,
+        });
     }
 
     let slipNo = null;

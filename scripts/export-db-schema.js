@@ -1,10 +1,5 @@
-/**
- * scripts/export-db-schema.js — DB 스키마 익스포트
- *
- * 모든 테이블의 컬럼·인덱스·외래키 정보를 조회하여
- * documents/db-schema.md로 출력한다.
- * 실행: node scripts/export-db-schema.js
- */
+// scripts/export-db-schema.js
+// DB 스키마를 조회하여 documents/db-schema.md 파일로 정리하는 스크립트
 require("dotenv").config();
 const mysql = require("mysql2/promise");
 const fs = require("fs");

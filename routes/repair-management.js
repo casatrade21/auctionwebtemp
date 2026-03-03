@@ -1,11 +1,8 @@
-/**
- * routes/repair-management.js — 수선 관리 API
- *
- * 수선 워크플로우 관리, Google Sheets 연동(업체별 진행/완료),
- * WMS 상태 동기화. 관리자 전용.
- * 마운트: /api/repair-management
- */
 const express = require("express");
+const path = require("path");
+const { google } = require("googleapis");
+const { pool } = require("../utils/DB");
+const { requireAdmin } = require("../utils/adminAuth");
 const {
   backfillCompletedWmsItemsByBidStatus,
 } = require("../utils/wms-bid-sync");
@@ -3113,10 +3110,12 @@ router.put("/vendors/:id", isAdmin, async (req, res) => {
     } catch (_) {}
     console.error("repair vendor update error:", error);
     if (error?.code === "ER_DUP_ENTRY") {
-      return res.status(409).json({
-        ok: false,
-        message: "같은 이름의 외주업체가 이미 존재합니다.",
-      });
+      return res
+        .status(409)
+        .json({
+          ok: false,
+          message: "같은 이름의 외주업체가 이미 존재합니다.",
+        });
     }
     res.status(500).json({ ok: false, message: "외주업체 수정 실패" });
   } finally {
@@ -4548,10 +4547,12 @@ router.post("/cases/:id/sync-external-quote", isAdmin, async (req, res) => {
     ).trim();
     if (!barcode) {
       await conn.rollback();
-      return res.status(400).json({
-        ok: false,
-        message: "내부바코드가 없어 동기화할 수 없습니다.",
-      });
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          message: "내부바코드가 없어 동기화할 수 없습니다.",
+        });
     }
 
     const parsedSheet = parseGoogleSheetLink(row.sheet_url);

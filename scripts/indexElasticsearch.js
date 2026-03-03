@@ -1,10 +1,4 @@
-/**
- * scripts/indexElasticsearch.js — Elasticsearch 전체 인덱싱
- *
- * crawled_items·values_items 테이블을 10,000건 배치로
- * ES에 볈크 인덱싱한다.
- * 실행: node scripts/indexElasticsearch.js
- */
+// scripts/indexElasticsearch.js
 require("dotenv").config();
 const { pool } = require("../utils/DB");
 const esManager = require("../utils/elasticsearch");
@@ -22,7 +16,7 @@ async function indexInBatches(tableName, items) {
     const totalBatches = Math.ceil(items.length / BATCH_SIZE);
 
     console.log(
-      `  Processing batch ${batchNum}/${totalBatches} (${batch.length} items)...`,
+      `  Processing batch ${batchNum}/${totalBatches} (${batch.length} items)...`
     );
 
     const result = await esManager.bulkIndex(tableName, batch);
@@ -63,7 +57,7 @@ async function indexAllData() {
       console.log(`Found ${crawledItems.length} items to index`);
       const result = await indexInBatches("crawled_items", crawledItems);
       console.log(
-        `✓ Indexed ${result.indexed} crawled_items (errors: ${result.errors})`,
+        `✓ Indexed ${result.indexed} crawled_items (errors: ${result.errors})`
       );
     } else {
       console.log("No crawled_items to index");
@@ -83,7 +77,7 @@ async function indexAllData() {
       console.log(`Found ${valuesItems.length} items to index`);
       const result = await indexInBatches("values_items", valuesItems);
       console.log(
-        `✓ Indexed ${result.indexed} values_items (errors: ${result.errors})`,
+        `✓ Indexed ${result.indexed} values_items (errors: ${result.errors})`
       );
     } else {
       console.log("No values_items to index");

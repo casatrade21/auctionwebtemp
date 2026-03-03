@@ -1,10 +1,4 @@
-/**
- * routes/appr/appraisals.js — 감정 접수/조회 API
- *
- * 감정 요청 등록(이미지 업로드 포함),
- * 인증서 번호 생성, 상태 관리.
- * 마운트: /api/appr/appraisals
- */
+// routes/appr/appraisals.js
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../../utils/DB");
@@ -39,7 +33,7 @@ const upload = multer({
     } else {
       cb(
         new Error("유효하지 않은 파일 형식입니다. 이미지만 업로드 가능합니다."),
-        false,
+        false
       );
     }
   },
@@ -95,7 +89,7 @@ router.post("/", isAuthenticated, async (req, res) => {
     if (appraisal_type === "quicklink") {
       const [userCredit] = await conn.query(
         "SELECT quick_link_credits_remaining, quick_link_monthly_limit FROM appr_users WHERE user_id = ?",
-        [user_id],
+        [user_id]
       );
 
       if (
@@ -139,7 +133,7 @@ router.post("/", isAuthenticated, async (req, res) => {
         "pending",
         "pending",
         certificate_number,
-      ],
+      ]
     );
 
     res.status(201).json({
@@ -296,7 +290,7 @@ router.get("/my", isAuthenticated, async (req, res) => {
     // 사용자 기본 정보 조회 - business_number, company_name, address 추가
     const [users] = await conn.query(
       "SELECT id, email, company_name, phone, business_number, address, created_at FROM users WHERE id = ?",
-      [user_id],
+      [user_id]
     );
 
     if (users.length === 0) {
@@ -314,7 +308,7 @@ router.get("/my", isAuthenticated, async (req, res) => {
         quick_link_subscription_expires_at as subscription_expires_at,
         offline_appraisal_fee
       FROM appr_users WHERE user_id = ?`,
-      [user_id],
+      [user_id]
     );
 
     const membership_info =
@@ -340,13 +334,13 @@ router.get("/my", isAuthenticated, async (req, res) => {
       FROM appraisals 
       WHERE user_id = ?
       ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [user_id, limit, 0],
+      [user_id, limit, 0]
     );
 
     // 전체 감정 개수 조회
     const [countResult] = await conn.query(
       "SELECT COUNT(*) as total FROM appraisals WHERE user_id = ?",
-      [user_id],
+      [user_id]
     );
 
     const total = countResult[0].total;
@@ -450,7 +444,7 @@ router.get("/authenticity-guides/:brand", async (req, res) => {
       FROM authenticity_guides
       WHERE brand = ? AND is_active = true
       ORDER BY guide_type`,
-      [brand],
+      [brand]
     );
 
     if (rows.length === 0) {
@@ -488,7 +482,7 @@ router.get("/banners", async (req, res) => {
         button_text, button_link, display_order
       FROM main_banners 
       WHERE is_active = true 
-      ORDER BY display_order ASC, created_at DESC`,
+      ORDER BY display_order ASC, created_at DESC`
     );
 
     res.json({
@@ -517,7 +511,7 @@ router.get("/:certificate_number", isAuthenticated, async (req, res) => {
 
     const [rows] = await conn.query(
       `SELECT * FROM appraisals WHERE certificate_number = ? AND user_id = ?`,
-      [certificate_number, user_id],
+      [certificate_number, user_id]
     );
 
     if (rows.length === 0) {
@@ -569,7 +563,7 @@ router.get("/certificate/:certificateNumber", async (req, res) => {
         certificate_number, brand, model_name, category, appraisal_type, 
         created_at, status, result, result_notes, images, appraised_at
       FROM appraisals WHERE certificate_number = ?`,
-      [certificateNumber],
+      [certificateNumber]
     );
 
     if (rows.length === 0) {
@@ -647,7 +641,7 @@ router.get(
         result, result_notes, images, appraised_at, certificate_number, status,
         remarks, product_link, platform, purchase_year, components_included, delivery_info
       FROM appraisals WHERE certificate_number = ? AND user_id = ?`,
-        [certificateNumber, user_id],
+        [certificateNumber, user_id]
       );
 
       if (rows.length === 0) {
@@ -665,7 +659,7 @@ router.get(
       }
       if (appraisal.components_included) {
         appraisal.components_included = JSON.parse(
-          appraisal.components_included,
+          appraisal.components_included
         );
       }
       if (appraisal.delivery_info) {
@@ -693,7 +687,7 @@ router.get(
     } finally {
       if (conn) conn.release();
     }
-  },
+  }
 );
 
 // PDF 감정서 다운로드 - GET /api/appr/appraisals/certificate/:certificateNumber/download
@@ -707,7 +701,7 @@ router.get("/certificate/:certificateNumber/download", async (req, res) => {
     // status 조건 제거
     const [rows] = await conn.query(
       "SELECT certificate_url FROM appraisals WHERE certificate_number = ?",
-      [certificateNumber],
+      [certificateNumber]
     );
 
     if (rows.length === 0 || !rows[0].certificate_url) {
@@ -720,7 +714,7 @@ router.get("/certificate/:certificateNumber/download", async (req, res) => {
     const pdfPath = path.join(
       __dirname,
       "../../public",
-      rows[0].certificate_url.replace(/^\//, ""),
+      rows[0].certificate_url.replace(/^\//, "")
     );
 
     // PDF 파일 존재 여부 확인
@@ -735,7 +729,7 @@ router.get("/certificate/:certificateNumber/download", async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="certificate-${certificateNumber}.pdf"`,
+      `attachment; filename="certificate-${certificateNumber}.pdf"`
     );
 
     const fileStream = fs.createReadStream(pdfPath);
@@ -762,7 +756,7 @@ router.get("/certificate/:certificateNumber/qrcode", async (req, res) => {
     // status 조건 제거
     const [rows] = await conn.query(
       "SELECT qrcode_url FROM appraisals WHERE certificate_number = ?",
-      [certificateNumber],
+      [certificateNumber]
     );
 
     if (rows.length === 0 || !rows[0].qrcode_url) {
@@ -775,7 +769,7 @@ router.get("/certificate/:certificateNumber/qrcode", async (req, res) => {
     const qrcodePath = path.join(
       __dirname,
       "../../public",
-      rows[0].qrcode_url.replace(/^\//, ""),
+      rows[0].qrcode_url.replace(/^\//, "")
     );
 
     // QR 코드 이미지 파일 존재 여부 확인

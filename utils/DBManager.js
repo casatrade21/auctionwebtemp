@@ -1,13 +1,4 @@
-/**
- * DBManager.js — DB 볈크 작업 매니저 (싱글톤)
- *
- * crawled_items / values_items 테이블 대상:
- *  - saveItems — INSERT … ON DUPLICATE KEY UPDATE
- *  - updateItems / updateItemDetails — 부분 업데이트
- *  - deleteItemsWithout — 입찰 연결된 아이템 보호 후 삭제
- *  - cleanupUnusedImages — 고아 이미지 파일 정리
- *  - cleanupOldValueItems — 오래된 시세 데이터 정리
- */
+// utils/DBManager.js
 const { pool } = require("./DB");
 const fs = require("fs").promises;
 const path = require("path");

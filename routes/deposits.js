@@ -1,10 +1,4 @@
-/**
- * routes/deposits.js — 예치금 관리 API
- *
- * 잔액 조회, 충전/차감/환불, 거래 내역 조회,
- * 오픈뱅킹 연동(충전), cron 기반 자동 처리.
- * 마운트: /api/deposits
- */
+// routes/deposits.js
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../utils/DB");

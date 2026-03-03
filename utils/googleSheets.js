@@ -1,10 +1,4 @@
-/**
- * googleSheets.js — Google Sheets 양방향 동기화
- *
- * 1분 간격으로 스프레드시트 변경을 감지하여
- * 입찰 데이터(refreshAllBidInfo)와 사용자 데이터(syncUsersWithDB)를
- * MySQL DB와 동기화한다.
- */
+// utils/googleSheets.js
 const { google } = require("googleapis");
 const path = require("path");
 const { pool } = require("./DB");
@@ -307,7 +301,7 @@ class GoogleSheetsManager {
 
       // 3. 구글 시트에 없는 입찰 ID 찾기
       const bidsToDelete = allBidIds.filter(
-        (id) => !sheetBidIds.includes(id.toString()),
+        (id) => !sheetBidIds.includes(id.toString())
       );
 
       // 4. 구글 시트에 없는 입찰 삭제
@@ -317,10 +311,10 @@ class GoogleSheetsManager {
           DELETE FROM bids 
           WHERE id IN (?)
         `,
-          [bidsToDelete],
+          [bidsToDelete]
         );
         console.log(
-          `Deleted bids not in Google Sheet: ${bidsToDelete.join(", ")}`,
+          `Deleted bids not in Google Sheet: ${bidsToDelete.join(", ")}`
         );
       }
 
@@ -373,7 +367,7 @@ class GoogleSheetsManager {
               } catch (error) {
                 console.error(
                   `Failed to update bid ${bidIdsToUpdate[i]}:`,
-                  error,
+                  error
                 );
                 throw error;
               }
@@ -384,7 +378,7 @@ class GoogleSheetsManager {
         console.log(
           `Updated bids ${bidIdsToUpdate
             .filter((_, i) => bidInfos[i])
-            .join(", ")} with new values`,
+            .join(", ")} with new values`
         );
       }
 
@@ -464,7 +458,7 @@ class GoogleSheetsManager {
         // 사용자가 DB에 이미 존재하면 스킵 (DB 정보 우선)
         if (existingUser) {
           console.log(
-            `사용자 ${userId}는 이미 DB에 존재합니다. 스프레드시트 데이터로 업데이트하지 않습니다.`,
+            `사용자 ${userId}는 이미 DB에 존재합니다. 스프레드시트 데이터로 업데이트하지 않습니다.`
           );
           continue;
         }
@@ -505,17 +499,17 @@ class GoogleSheetsManager {
             phone,
             address,
             isActive === "TRUE" || isActive === true,
-          ],
+          ]
         );
 
         console.log(
-          `새 사용자 ${userId}가 스프레드시트에서 DB로 추가되었습니다.`,
+          `새 사용자 ${userId}가 스프레드시트에서 DB로 추가되었습니다.`
         );
       }
 
       await conn.commit();
       console.log(
-        "동기화 완료: 스프레드시트의 새 사용자만 DB에 추가되었습니다.",
+        "동기화 완료: 스프레드시트의 새 사용자만 DB에 추가되었습니다."
       );
     } catch (error) {
       if (conn) await conn.rollback();

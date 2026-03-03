@@ -1,9 +1,4 @@
-/**
- * translator.js — AWS Translate 래퍼 (싱글톤)
- *
- * 일본어 → 영어 번역 + DB 캐시(translation_cache).
- * 속도 제한(50ms 간격), 재시도, 캐시 만료(365일) 관리.
- */
+// utils/translator.js
 const {
   TranslateClient,
   TranslateTextCommand,
@@ -13,6 +8,7 @@ const { pool } = require("./DB");
 class Translator {
   constructor(config = {}) {
     this.client = new TranslateClient({
+      // ✅ 변경
       region: config.region || "ap-northeast-2",
     });
 

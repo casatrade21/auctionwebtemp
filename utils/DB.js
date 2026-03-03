@@ -1,14 +1,8 @@
-/**
- * DB.js — MySQL 연결 풀 관리
- *
- * pool        — 메인 앱용 (connectionLimit: 100)
- * sessionPool — 세션 스토어 전용 (connectionLimit: 20)
- * safeQuery   — 커넥션 자동 해제 쿼리 함수
- */
+// utils/DB.js
 require("dotenv").config();
 const mysql = require("mysql2/promise");
 
-// 메인 커넥션 풀 (100개)
+// 메인 애플리케이션용 연결 풀
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -18,25 +12,26 @@ const pool = mysql.createPool({
   connectionLimit: 100,
   charset: "utf8mb4",
   connectTimeout: 10000,
-  idleTimeout: 300000, // 5분
-  maxIdle: 40,
+  // 추가 안정성 설정
+  idleTimeout: 300000, // 5분 후 유휴 연결 해제
+  maxIdle: 40, // 최대 유휴 연결 수
 });
 
-// 세션 전용 커넥션 풀 (20개)
+// 세션 스토어 전용 연결 풀 (별도 관리)
 const sessionPool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT || 3306,
   database: process.env.DB_NAME,
-  connectionLimit: 20,
+  connectionLimit: 20, // 세션용 전용 연결
   charset: "utf8mb4",
   connectTimeout: 10000,
-  idleTimeout: 120000, // 2분
+  idleTimeout: 120000, // 2분 후 유휴 연결 해제
   maxIdle: 8,
 });
 
-/** 커넥션 풀 상태 출력 (개발 환경 전용) */
+// 연결 상태 모니터링 함수
 async function monitorConnections() {
   try {
     const [maxConn] = await pool.query("SHOW VARIABLES LIKE 'max_connections'");
@@ -54,7 +49,7 @@ async function monitorConnections() {
   }
 }
 
-/** 커넥션 자동 해제 쿼리 — conn.release() 누락 방지 */
+// 안전한 쿼리 실행 함수
 async function safeQuery(query, params = []) {
   let conn;
   try {
@@ -71,19 +66,22 @@ async function safeQuery(query, params = []) {
   }
 }
 
-// 개발 환경: 1분 간격 모니터링
+// 연결 풀 상태 체크 (개발 환경에서만)
 if (process.env.NODE_ENV !== "production") {
-  setInterval(monitorConnections, 60000);
+  setInterval(monitorConnections, 60000); // 1분마다 모니터링
 }
 
-/** DB 연결 테스트 (CLI 직접 실행용) */
+// test 쿼리 (수정됨)
 async function testConnection() {
   let conn;
   try {
     conn = await pool.getConnection();
     console.log("Successfully connected to the database");
 
+    // 연결 상태 확인 쿼리들
     const queries = [`SHOW INDEX FROM crawled_items`];
+
+    // 각 쿼리 순차 실행
     for (const query of queries) {
       const [rows, fields] = await conn.query(query);
       console.log(`Executed: ${query}`);
@@ -108,6 +106,7 @@ async function testConnection() {
   }
 }
 
+// 개발용 실행
 if (require.main === module) {
   testConnection();
 }

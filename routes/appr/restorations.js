@@ -1,9 +1,4 @@
-/**
- * routes/appr/restorations.js — 복원 서비스 API (감정 시스템)
- *
- * 복원 서비스 목록 조회, 복원 요청 등록/상태 관리.
- * 마운트: /api/appr/restorations
- */
+// routes/appr/restorations.js
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../../utils/DB");
@@ -17,7 +12,7 @@ router.get("/services", async (req, res) => {
     conn = await pool.getConnection();
 
     const [rows] = await conn.query(
-      "SELECT id, name, description, price, estimated_days, before_image, after_image, is_active FROM restoration_services WHERE is_active = true",
+      "SELECT id, name, description, price, estimated_days, before_image, after_image, is_active FROM restoration_services WHERE is_active = true"
     );
 
     res.json({
@@ -63,7 +58,7 @@ router.post("/", isAuthenticated, async (req, res) => {
     // 감정 정보 확인 (certificate_number로 조회)
     const [appraisalRows] = await conn.query(
       "SELECT id, brand, model_name FROM appraisals WHERE certificate_number = ? AND user_id = ?",
-      [certificate_number, user_id],
+      [certificate_number, user_id]
     );
 
     if (appraisalRows.length === 0) {
@@ -82,7 +77,7 @@ router.post("/", isAuthenticated, async (req, res) => {
     for (const service of services) {
       const [serviceRows] = await conn.query(
         "SELECT id, name, price FROM restoration_services WHERE id = ? AND is_active = true",
-        [service.service_id],
+        [service.service_id]
       );
 
       if (serviceRows.length === 0) {
@@ -132,13 +127,13 @@ router.post("/", isAuthenticated, async (req, res) => {
         typeof total_price === "number" ? total_price.toString() : total_price, // 문자열로 저장
         JSON.stringify(delivery_info),
         notes || null,
-      ],
+      ]
     );
 
     // 예상 완료일 계산 (서비스 중 가장 긴 소요일 + 현재 날짜)
     const [serviceEstimates] = await conn.query(
       "SELECT MAX(estimated_days) as max_days FROM restoration_services WHERE id IN (?)",
-      [services.map((s) => s.service_id)],
+      [services.map((s) => s.service_id)]
     );
 
     const maxDays = serviceEstimates[0].max_days || 7;
@@ -148,7 +143,7 @@ router.post("/", isAuthenticated, async (req, res) => {
     // 예상 완료일 업데이트
     await conn.query(
       "UPDATE restoration_requests SET estimated_completion_date = ? WHERE id = ?",
-      [estimatedDate, restoration_id],
+      [estimatedDate, restoration_id]
     );
 
     res.status(201).json({
@@ -261,7 +256,7 @@ router.get("/:id", isAuthenticated, async (req, res) => {
       FROM restoration_requests r
       JOIN appraisals a ON r.appraisal_id = a.id
       WHERE r.id = ? AND r.user_id = ?`,
-      [restoration_id, user_id],
+      [restoration_id, user_id]
     );
 
     if (rows.length === 0) {

@@ -1,13 +1,4 @@
-/**
- * appr.js — 감정 시스템 유틸리티
- *
- * 서비스:
- *  - 워터마크 적용 (sharp, 캐시 기반 최적화)
- *  - 인증서 번호 생성 (cas + 6자리 순차 번호)
- *  - QR 코드 생성
- *  - 경매 결과로부터 감정서 레코드 생성
- *  - 기존 이미지 워터마크 마이그레이션
- */
+// utils/appr.js - 워터마크 최적화 버전
 const QRCode = require("qrcode");
 const sharp = require("sharp");
 const path = require("path");
@@ -96,7 +87,7 @@ function isWatermarked(filename) {
 async function applyWatermarkToImageOptimized(
   inputPath,
   outputPath,
-  watermarkCache,
+  watermarkCache
 ) {
   try {
     // 워터마크 캐시가 없는 경우 원본 복사
@@ -116,7 +107,7 @@ async function applyWatermarkToImageOptimized(
 
     // 워터마크 크기 계산
     const watermarkWidth = Math.round(
-      originalMetadata.width * WATERMARK_CONFIG.widthPercent,
+      originalMetadata.width * WATERMARK_CONFIG.widthPercent
     );
 
     // 워터마크 리사이징 (캐시된 버퍼 사용)
@@ -143,13 +134,13 @@ async function applyWatermarkToImageOptimized(
 
     // 워터마크 위치 계산 (중앙)
     const resizedWatermarkMetadata = await sharp(
-      resizedWatermarkBuffer,
+      resizedWatermarkBuffer
     ).metadata();
     const left = Math.round(
-      (originalMetadata.width - resizedWatermarkMetadata.width) / 2,
+      (originalMetadata.width - resizedWatermarkMetadata.width) / 2
     );
     const top = Math.round(
-      (originalMetadata.height - resizedWatermarkMetadata.height) / 2,
+      (originalMetadata.height - resizedWatermarkMetadata.height) / 2
     );
 
     // 워터마크 합성
@@ -186,7 +177,7 @@ async function applyWatermarkToImage(inputPath, outputPath) {
   return await applyWatermarkToImageOptimized(
     inputPath,
     outputPath,
-    watermarkCache,
+    watermarkCache
   );
 }
 
@@ -197,7 +188,7 @@ async function processSingleFile(
   file,
   destinationDir,
   watermarkCache,
-  options = {},
+  options = {}
 ) {
   const {
     skipExisting = true,
@@ -242,7 +233,7 @@ async function processSingleFile(
     const success = await applyWatermarkToImageOptimized(
       originalPath,
       watermarkedPath,
-      watermarkCache,
+      watermarkCache
     );
 
     if (success) {
@@ -293,8 +284,8 @@ async function processUploadedImages(files, destinationDir, options = {}) {
     // 병렬 처리 (p-limit 사용)
     const processPromises = files.map((file) =>
       limit(() =>
-        processSingleFile(file, destinationDir, watermarkCache, options),
-      ),
+        processSingleFile(file, destinationDir, watermarkCache, options)
+      )
     );
 
     const results = await Promise.all(processPromises);
@@ -315,7 +306,7 @@ async function processUploadedImages(files, destinationDir, options = {}) {
 async function processUploadedImagesFallback(
   files,
   destinationDir,
-  options = {},
+  options = {}
 ) {
   const processedImages = [];
 
@@ -367,7 +358,7 @@ async function ensureWatermarkOnExistingImages(imageUrls, options = {}) {
           const originalPath = path.join(
             __dirname,
             "../public",
-            imageUrl.replace(/^\//, ""),
+            imageUrl.replace(/^\//, "")
           );
 
           // 파일 존재 여부 확인
@@ -386,7 +377,7 @@ async function ensureWatermarkOnExistingImages(imageUrls, options = {}) {
           const success = await applyWatermarkToImageOptimized(
             originalPath,
             watermarkedPath,
-            watermarkCache,
+            watermarkCache
           );
 
           if (success) {
@@ -398,7 +389,7 @@ async function ensureWatermarkOnExistingImages(imageUrls, options = {}) {
           console.error(`기존 이미지 워터마크 적용 실패: ${imageUrl}`, error);
           return imageUrl; // 실패 시 원본 URL 유지
         }
-      }),
+      })
     );
 
     const processedUrls = await Promise.all(processPromises);
@@ -417,14 +408,14 @@ async function generateCertificateNumber(conn, customNumber = null) {
     const certPattern = /^cas\d+$/i;
     if (!certPattern.test(customNumber)) {
       throw new Error(
-        "감정 번호는 CAS + 숫자 형식이어야 합니다. (예: CAS04312)",
+        "감정 번호는 CAS + 숫자 형식이어야 합니다. (예: CAS04312)"
       );
     }
 
     const normalizedNumber = customNumber.toLowerCase();
     const [existing] = await conn.query(
       "SELECT certificate_number FROM appraisals WHERE certificate_number = ?",
-      [normalizedNumber],
+      [normalizedNumber]
     );
 
     if (existing.length > 0) {
@@ -440,7 +431,7 @@ async function generateCertificateNumber(conn, customNumber = null) {
        FROM appraisals 
        WHERE certificate_number REGEXP '^cas[0-9]+$' 
        ORDER BY created_at DESC 
-       LIMIT 1`,
+       LIMIT 1`
     );
 
     let nextNumber = 1;
@@ -468,7 +459,7 @@ async function generateCertificateNumber(conn, customNumber = null) {
 
       const [existing] = await conn.query(
         "SELECT certificate_number FROM appraisals WHERE certificate_number = ?",
-        [certificateNumber],
+        [certificateNumber]
       );
 
       if (existing.length === 0) {
@@ -486,7 +477,7 @@ async function generateCertificateNumber(conn, customNumber = null) {
 
       const [randomCheck] = await conn.query(
         "SELECT certificate_number FROM appraisals WHERE certificate_number = ?",
-        [certificateNumber],
+        [certificateNumber]
       );
 
       if (randomCheck.length > 0) {
@@ -581,7 +572,7 @@ async function createAppraisalFromAuction(conn, bid, item, userId) {
         processedImages.length > 0 ? JSON.stringify(processedImages) : null,
         certificateNumber,
         qrcodeUrl,
-      ],
+      ]
     );
 
     return {
@@ -614,7 +605,7 @@ async function migrateExistingAppraisalImages(conn, batchSize = 10) {
       AND images != '[]'
       LIMIT ?
     `,
-      [batchSize],
+      [batchSize]
     );
 
     let processedCount = 0;
@@ -633,7 +624,7 @@ async function migrateExistingAppraisalImages(conn, batchSize = 10) {
               images,
               {
                 forceReprocess: false,
-              },
+              }
             );
 
             // 변경사항이 있으면 DB 업데이트
@@ -643,7 +634,7 @@ async function migrateExistingAppraisalImages(conn, batchSize = 10) {
             if (hasChanges) {
               await conn.query(
                 "UPDATE appraisals SET images = ? WHERE id = ?",
-                [JSON.stringify(watermarkedImages), appraisal.id],
+                [JSON.stringify(watermarkedImages), appraisal.id]
               );
 
               console.log(`감정서 ${appraisal.id} 이미지 워터마크 적용 완료`);
@@ -655,7 +646,7 @@ async function migrateExistingAppraisalImages(conn, batchSize = 10) {
           console.error(`감정서 ${appraisal.id} 처리 실패:`, error);
           return 0;
         }
-      }),
+      })
     );
 
     const results = await Promise.all(migrationPromises);

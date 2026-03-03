@@ -1,9 +1,4 @@
-/**
- * routes/appr/users.js — 감정 사용자 프로필 API
- *
- * 회원 프로필 및 멤버십 정보 조회. 인증 필수.
- * 마운트: /api/appr/users
- */
+// routes/appr/users.js
 const express = require("express");
 const router = express.Router();
 const { pool } = require("../../utils/DB");
@@ -20,7 +15,7 @@ router.get("/profile", isAuthenticated, async (req, res) => {
     // 사용자 기본 정보 조회
     const [userRows] = await conn.query(
       "SELECT id, email, company_name, phone, address, created_at FROM users WHERE id = ?",
-      [user_id],
+      [user_id]
     );
 
     if (userRows.length === 0) {
@@ -37,7 +32,7 @@ router.get("/profile", isAuthenticated, async (req, res) => {
         quick_link_subscription_type, quick_link_subscription_expires_at,
         offline_appraisal_fee, last_reset_date
       FROM appr_users WHERE user_id = ?`,
-      [user_id],
+      [user_id]
     );
 
     // 사용자가 멤버십 정보가 없는 경우 기본값 설정
@@ -85,7 +80,7 @@ router.get("/subscription", isAuthenticated, async (req, res) => {
         quick_link_subscription_type as type,
         quick_link_subscription_expires_at as expires_at
       FROM appr_users WHERE user_id = ?`,
-      [user_id],
+      [user_id]
     );
 
     if (rows.length === 0) {

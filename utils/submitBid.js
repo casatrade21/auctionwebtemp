@@ -1,10 +1,4 @@
-/**
- * submitBid.js — 경매 플랫폼 입찰 제출
- *
- * 경매장별 입찰가 검증(1000¥/500¥ 단위) 후
- * 크롤러를 통해 실제 플랫폼에 입찰을 제출한다.
- * BrandAuc은 임시로 API 실패도 성공 처리 중.
- */
+// utils/submitBid.js
 const { pool } = require("./DB");
 const {
   ecoAucCrawler,
