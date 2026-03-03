@@ -11,6 +11,11 @@ const {
 const cron = require("node-cron");
 
 const isAdmin = requireAdmin;
+const LOGEN_API_DISABLED = true;
+
+function isLogenEnabled() {
+  return !LOGEN_API_DISABLED && logen.isConfigured();
+}
 
 // ── 테이블 자동 생성 ────────────────────────────────
 
@@ -124,7 +129,7 @@ const STATUS_LABELS = {
  */
 router.get("/status", isAdmin, async (req, res) => {
   res.json({
-    configured: logen.isConfigured(),
+    configured: isLogenEnabled(),
     isTest: (process.env.LOGEN_IS_TEST || "true") === "true",
     userId: logen.USER_ID ? logen.USER_ID.slice(0, 4) + "****" : null,
     custCd: logen.CUST_CD ? logen.CUST_CD.slice(0, 4) + "****" : null,
@@ -149,7 +154,7 @@ router.get("/couriers", async (req, res) => {
  */
 router.get("/contract-info", isAdmin, async (req, res) => {
   try {
-    if (!logen.isConfigured()) {
+    if (!isLogenEnabled()) {
       return res
         .status(400)
         .json({ success: false, message: "로젠 API 미설정" });
@@ -242,7 +247,7 @@ router.post("/lookup-address", isAdmin, async (req, res) => {
       .json({ success: false, message: "주소를 입력하세요" });
   }
   try {
-    if (!logen.isConfigured()) {
+    if (!isLogenEnabled()) {
       return res
         .status(400)
         .json({ success: false, message: "로젠 API 미설정" });
@@ -335,7 +340,7 @@ router.post("/register", isAdmin, async (req, res) => {
     let status = "ready";
     let orderNo = `SH-${Date.now()}-${bid_type[0].toUpperCase()}${bid_id}`;
 
-    if (logen.isConfigured()) {
+    if (isLogenEnabled()) {
       // Step 1: 주소 → 배송점코드
       try {
         const addrInfo = await logen.getDeliveryInfo(receiver_address);
@@ -493,8 +498,8 @@ router.post("/register", isAdmin, async (req, res) => {
       shipment_id: shipmentId,
       slip_no: slipNo,
       status,
-      logen_configured: logen.isConfigured(),
-      message: logen.isConfigured()
+      logen_configured: isLogenEnabled(),
+      message: isLogenEnabled()
         ? status === "order_registered"
           ? "로젠 주문 등록 완료"
           : "송장 채번 완료 (주문 등록은 수동 필요)"
@@ -619,7 +624,7 @@ router.get("/track/:id(\\d+)", isAdmin, async (req, res) => {
       });
     }
 
-    if (!logen.isConfigured()) {
+    if (!isLogenEnabled()) {
       return res.json({
         success: true,
         shipment,
@@ -766,7 +771,7 @@ router.get("/my/:id(\\d+)/track", async (req, res) => {
       : null;
 
     // 배달완료가 아니고 로젠 설정되어 있으면 실시간 조회
-    if (slipNo && logen.isConfigured() && shipment.status !== "delivered") {
+    if (slipNo && isLogenEnabled() && shipment.status !== "delivered") {
       try {
         tracking = await logen.trackPackage(slipNo);
         const newStatus = tracking.isDelivered
@@ -819,7 +824,7 @@ router.get("/my/:id(\\d+)/track", async (req, res) => {
 // =====================================================
 
 async function refreshShippingStatuses() {
-  if (!logen.isConfigured())
+  if (!isLogenEnabled())
     return { skipped: true, reason: "로젠 API 미설정" };
 
   try {
