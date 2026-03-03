@@ -542,7 +542,7 @@ router.get("/list", isAdmin, async (req, res) => {
     const [rows] = await pool.query(
       `SELECT s.*,
         u.company_name,
-        u.username
+        u.login_id AS username
        FROM shipments s
        LEFT JOIN users u ON s.user_id = u.id
        WHERE ${where}
@@ -575,7 +575,7 @@ router.get("/:id(\\d+)", isAdmin, async (req, res) => {
   await ensureTables();
   try {
     const [rows] = await pool.query(
-      `SELECT s.*, u.company_name, u.username
+      `SELECT s.*, u.company_name, u.login_id AS username
        FROM shipments s LEFT JOIN users u ON s.user_id = u.id
        WHERE s.id = ?`,
       [req.params.id],
