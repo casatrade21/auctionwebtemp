@@ -187,9 +187,9 @@ router.get("/outbound-ready", isAdmin, async (req, res) => {
           ELSE l.user_id
         END AS user_id,
         CASE
-          WHEN w.source_bid_type = 'direct' THEN du.company_address
-          WHEN w.source_bid_type = 'instant' THEN iu.company_address
-          ELSE lu.company_address
+          WHEN w.source_bid_type = 'direct' THEN du.address
+          WHEN w.source_bid_type = 'instant' THEN iu.address
+          ELSE lu.address
         END AS company_address,
         CASE
           WHEN w.source_bid_type = 'direct' THEN du.company_name
